@@ -19,6 +19,8 @@ bool checkArguments(int argc, char** argv) {
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	mVL = new VideoLoader( getCmdOption(argv, argv + argc, "--input") );
+	mRPG = new RefProjGenerator(mVL);
+	mRPG->doReferenceProjection();
 }
 
 int main(int argc, char* argv[]) {

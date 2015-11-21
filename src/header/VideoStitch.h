@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <header/VideoLoader.h>
+#include <header/RefProjGenerator.h>
 #include <header/Usage.h>
 
 using namespace std;
@@ -11,6 +12,7 @@ using namespace std;
 class VideoStitcher {
 	private:
 		VideoLoader* mVL;
+		RefProjGenerator* mRPG;
 
 	public:
 		VideoStitcher(int argc, char* argv[]);

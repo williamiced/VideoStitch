@@ -1,4 +1,4 @@
-#include "header/Usage.h"
+#include <header/Usage.h>
 
 void exitWithMsg(returnValEnum errVal, string msg) {
 	cout << "Error code: " << errVal << " [" << returnValToString.at(errVal) << "] " << msg << endl;

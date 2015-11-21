@@ -10,7 +10,7 @@ using namespace std;
 using boost::assign::map_list_of;
 
 enum returnValEnum {
-	N_NORMAL, E_BAD_ARGUMENTS, E_FILE_NOT_EXISTS
+	N_NORMAL, E_BAD_ARGUMENTS, E_FILE_NOT_EXISTS, E_TOO_FEW_VIDEOS
 };
 
 enum logTypeEnum {
@@ -20,7 +20,8 @@ enum logTypeEnum {
 const boost::unordered_map<returnValEnum, const char*> returnValToString = map_list_of
     (N_NORMAL, "Successfully executes.")
     (E_BAD_ARGUMENTS, "Bad arguments. Please check the usage.")
-    (E_FILE_NOT_EXISTS, "Files or directories cannot be found.");
+    (E_FILE_NOT_EXISTS, "Files or directories cannot be found.")
+    (E_TOO_FEW_VIDEOS, "Loaded videos are too few to stitch.");
 
 void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);

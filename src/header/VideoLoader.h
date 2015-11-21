@@ -14,11 +14,14 @@ using namespace cv;
 
 class VideoLoader {
 	private:
-		vector<VideoCapture> mVideoList;
+		vector<VideoCapture*> mVideoList;
 
 		void loadVideos(char* flieName);
-
 	public:
+
+		int getVideoListSize();
+		VideoCapture* getVideo(int idx);
+
     	VideoLoader(char* inputFileName);
     	~VideoLoader();
 };
