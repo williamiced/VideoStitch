@@ -8,8 +8,8 @@ CFLAGS=-Wall -O3 -fopenmp
 BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
 
 # For OpenCV support
-CFLAGS+=`pkg-config --cflags opencv gsl`
-LDFLAGS+=`pkg-config --libs opencv gsl` 
+CFLAGS+=`pkg-config --cflags opencv`
+LDFLAGS+=`pkg-config --libs opencv`  -L/usr/local/cuda-7.5/lib64
 
 # Paths
 SRC=src
@@ -18,7 +18,7 @@ SRC_FILES = $(wildcard $(SRC)/*.cpp) $(wildcard $(SRC)/*/*.cpp)
 DEPD = $(wildcard $(SRC)/*.h) $(wildcard $(SRC)/*/*.h)
 BIN=bin
 DATA=data/mp4
-INC=-I/usr/local/cuda-6.5/extras/CUPTI/include -Isrc -I/ -I/usr/local/cuda-6.5/targets/x86_64-linux/include/
+INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -Isrc -I/ -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
 
 # All files
 OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
@@ -46,7 +46,7 @@ VideoStitch: $(OBJ_FILES)
 	$(CC) $? -o $(BIN)/$@ $(LDFLAGS)
 
 run:
-	$(BIN)/VideoStitch --input data/balloon/inputVideo.txt
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --duration 100
 
 clean:
 	-rm -r $(BIN)/VideoStitch

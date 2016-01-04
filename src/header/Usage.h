@@ -3,6 +3,9 @@
 
 #include <iostream>
 #include <string>
+#include <ctime> 
+#include <stdarg.h>  // For va_start, etc.
+#include <memory>    // For std::unique_ptr
 #include <boost/assign/list_of.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -25,5 +28,6 @@ const boost::unordered_map<returnValEnum, const char*> returnValToString = map_l
 
 void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);
+string stringFormat(const string fmt_str, ...); 
 
 #endif // _H_USAGE
