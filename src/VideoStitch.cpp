@@ -20,21 +20,31 @@ bool checkArguments(int argc, char** argv) {
 void VideoStitcher::calcProjectionMatrix() {
 	int seqCount = mVL->getVideoCount();
 	for (int v=0; v<seqCount; v++) 
-		mProjMat.push_back(Mat::eye(3, 3, CV_32F));
+		mProjMat.push_back(Mat::eye(2, 3, CV_32F));
 	/** 
 		[TODO]
 			Use calibration file to get the proejction matrix
 	*/
 }
 
-void VideoStitcher::projectOnCanvas(Mat& canvas, Mat frame, int vIdx) {
+void VideoStitcher::projectOnCanvas(GpuMat& canvas, Mat frame, int vIdx) {
 	GpuMat newFrame;
 	GpuMat oriFrame(frame);
-	gpu::warpPerspective(oriFrame, newFrame, mProjMat[vIdx], Size(frame.cols, frame.rows));
+	cv::cuda::warpAffine(oriFrame, newFrame, mProjMat[vIdx], Size(frame.cols, frame.rows));
+	
+	// [TODO] Currently copyTo is a bottleneck which reduce fps from 40 to 13
+	newFrame.copyTo( canvas );
 	/** 
 		[TODO]
 			Paste new frame onto canvas
 	*/
+}
+
+VideoStitcher::~VideoStitcher() {
+	delete mVL;
+	delete mLP;
+	delete mEP;
+	delete mVS;
 }
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]) {
@@ -65,11 +75,16 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			6. Ouput
 	*/
 	logMsg(LOG_INFO, "[Do real-time process...]");
+	double videoFPS = mVL->getVideoFPS();
+	Size outputSize = Size(2704, 2028); // [TODO]: not decided yet
+	
+	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, outputSize);
+
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
 	for (int f=0; f<duration; f++) {
 		logMsg(LOG_DEBUG, stringFormat("\tProcess frame # %d", f ));
-		Mat targetCanvas;
+		GpuMat targetCanvas;
 		for (int v=0; v<seqCount; v++) {
 			Mat frame;
 			mVL->getFrameInSeq(f, v, frame);
@@ -78,6 +93,12 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		}
 		mEP->exposureBlending(targetCanvas);
 		mVS->stablize(targetCanvas);
+		
+		Mat canvas;
+		targetCanvas.download(canvas);	
+		
+		(*outputVideo) << canvas;
+		
 	}
 	logMsg(LOG_INFO, "[Done stitching]");
 }
@@ -87,4 +108,6 @@ int main(int argc, char* argv[]) {
 		exitWithMsg(E_BAD_ARGUMENTS);
 	VideoStitcher* vs = new VideoStitcher(argc, argv);
 	vs->doRealTimeStitching(argc, argv);
+
+	delete vs;
 }

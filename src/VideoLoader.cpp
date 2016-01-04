@@ -18,16 +18,23 @@ void VideoLoader::loadVideos(char* fileName) {
 void VideoLoader::preloadVideoForDuration(int duration) {
 	for (unsigned int v=0; v<mVideoList.size(); v++) {
 		vector<Mat> frames;
-		Mat frame;
 		mVideoList[v]->set(CV_CAP_PROP_POS_FRAMES, 0);
 		for (int f=0; f<duration; f++) {
-			(*mVideoList[v]) >> frame;
+			Mat frame;
+			bool suc1 = mVideoList[v]->grab();
+			bool suc2 = mVideoList[v]->retrieve(frame);
 			frames.push_back(frame);
+			if (!suc1 || !suc2)
+				logMsg(LOG_WARNING, stringFormat("\t\tFrame #%d in video #%d is not read correctly", f, v) );
 		}
 		mPreloadFrames.push_back(frames);
 		mVideoList[v]->set(CV_CAP_PROP_POS_FRAMES, 0);
 		logMsg(LOG_DEBUG, stringFormat("\tVideo # %d preloaded", v) );
 	}
+}
+
+double VideoLoader::getVideoFPS() {
+	return mVideoList[0]->get(CV_CAP_PROP_FPS);
 }
 
 int VideoLoader::getVideoListSize() {

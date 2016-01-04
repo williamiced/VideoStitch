@@ -10,9 +10,10 @@
 #include <header/ExposureProcessor.h>
 #include <header/Usage.h>
 
-#include "opencv2/gpu/gpu.hpp"
+#include "opencv2/core/cuda.hpp"
+#include "opencv2/cudawarping.hpp"
 
-using namespace gpu;
+using namespace cv::cuda;
 using namespace std;
 
 class VideoStitcher {
@@ -25,7 +26,7 @@ class VideoStitcher {
 
 	public:
 		void calcProjectionMatrix();
-		void projectOnCanvas(Mat& canvas, Mat frame, int vIdx);
+		void projectOnCanvas(GpuMat& canvas, Mat frame, int vIdx);
 		void doRealTimeStitching(int argc, char* argv[]);
 		VideoStitcher(int argc, char* argv[]);
 		~VideoStitcher();

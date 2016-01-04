@@ -22,6 +22,7 @@ class VideoLoader {
 		int getVideoListSize();
 		VideoCapture* getVideo(int idx);
 		bool getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame);
+		double getVideoFPS();
 		int getVideoCount();
 		void loadCalibrationFile(char* calFileName);
 		void preloadVideoForDuration(int duration);

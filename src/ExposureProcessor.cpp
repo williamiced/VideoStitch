@@ -1,6 +1,6 @@
 #include <header/ExposureProcessor.h>
 
-void ExposureProcessor::exposureBlending(Mat &canvas) {
+void ExposureProcessor::exposureBlending(GpuMat& canvas) {
 	/** 
 		[TODO]
 	*/

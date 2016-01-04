@@ -9,7 +9,7 @@ BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
 
 # For OpenCV support
 CFLAGS+=`pkg-config --cflags opencv`
-LDFLAGS+=`pkg-config --libs opencv`  -L/usr/local/cuda-7.5/lib64
+LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64
 
 # Paths
 SRC=src
@@ -46,7 +46,7 @@ VideoStitch: $(OBJ_FILES)
 	$(CC) $? -o $(BIN)/$@ $(LDFLAGS)
 
 run:
-	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --duration 100
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --duration 90 --output StitchResult.avi
 
 clean:
 	-rm -r $(BIN)/VideoStitch
