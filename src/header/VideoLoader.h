@@ -4,7 +4,12 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
 #include <vector>
+#include <map>
+
 #include <header/Usage.h>
 
 #include "opencv2/opencv.hpp"
@@ -16,6 +21,8 @@ class VideoLoader {
 	private:
 		vector<VideoCapture*> mVideoList;
 		vector< vector<Mat> > mPreloadFrames;
+		Size mVideoSize;
+		map< string, Mat > mCalibrationMatrix;
 
 		void loadVideos(char* flieName);
 	public:
@@ -24,6 +31,8 @@ class VideoLoader {
 		bool getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame);
 		double getVideoFPS();
 		int getVideoCount();
+		Size getVideoSize();
+		map< string, Mat > getCalibrationData();
 		void loadCalibrationFile(char* calFileName);
 		void preloadVideoForDuration(int duration);
 

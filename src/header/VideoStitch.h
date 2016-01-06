@@ -8,25 +8,23 @@
 #include <header/LensProcessor.h>
 #include <header/VideoStablizer.h>
 #include <header/ExposureProcessor.h>
+#include <header/MappingProjector.h>
 #include <header/Usage.h>
 
 #include "opencv2/core/cuda.hpp"
-#include "opencv2/cudawarping.hpp"
 
 using namespace cv::cuda;
 using namespace std;
 
 class VideoStitcher {
 	private:
-		VideoLoader* mVL;
-		LensProcessor* mLP;
-		VideoStablizer* mVS;
-		ExposureProcessor* mEP;
-		vector<Mat> mProjMat;
+		shared_ptr<VideoLoader> mVL;
+		shared_ptr<LensProcessor> mLP;
+		shared_ptr<VideoStablizer> mVS;
+		shared_ptr<ExposureProcessor> mEP;
+		shared_ptr<MappingProjector> mMP;
 
 	public:
-		void calcProjectionMatrix();
-		void projectOnCanvas(GpuMat& canvas, Mat frame, int vIdx);
 		void doRealTimeStitching(int argc, char* argv[]);
 		VideoStitcher(int argc, char* argv[]);
 		~VideoStitcher();

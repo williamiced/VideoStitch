@@ -13,6 +13,10 @@ void VideoLoader::loadVideos(char* fileName) {
 	logMsg(LOG_INFO, "Input videos amount: " + to_string(mVideoList.size()) );
 	if (mVideoList.size() <= 1) 
 		exitWithMsg(E_TOO_FEW_VIDEOS);
+
+	int w = (int) mVideoList[0]->get(CV_CAP_PROP_FRAME_WIDTH);
+	int h = (int) mVideoList[0]->get(CV_CAP_PROP_FRAME_HEIGHT);
+	mVideoSize = Size(w, h);
 }
 
 void VideoLoader::preloadVideoForDuration(int duration) {
@@ -41,6 +45,14 @@ int VideoLoader::getVideoListSize() {
 	return mVideoList.size();
 }
 
+Size VideoLoader::getVideoSize() {
+	return mVideoSize;
+}
+
+map<string, Mat> VideoLoader::getCalibrationData() {
+	return mCalibrationMatrix;
+}
+
 VideoCapture* VideoLoader::getVideo(int idx) {
 	return mVideoList[idx];
 }
@@ -63,11 +75,10 @@ bool VideoLoader::getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame
 	return true;
 }
 
-void VideoLoader::loadCalibrationFile(char* calFileName) {
-	/** 
-		[TODO] :
-			Implement calibration data structure and load it from file
-	**/
+void VideoLoader::loadCalibrationFile(char* calFileName) {	
+	FileStorage fs(calFileName, FileStorage::READ);
+	fs["cameraMatA"] >> mCalibrationMatrix["cameraMatA"];
+	fs["distCoeffs"] >> mCalibrationMatrix["distCoeffs"];
 }
 
 VideoLoader::VideoLoader(char* inputFileName) {

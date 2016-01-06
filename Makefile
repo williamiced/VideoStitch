@@ -1,8 +1,8 @@
 # C++ Compiler
-CC=g++ -std=c++11 
+CC=g++ -std=c++14
 
 # Using Debug flags
-CFLAGS=-Wall -O3 -fopenmp
+CFLAGS=-Wall -O3
 
 # Using for clearer error finding
 BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
@@ -18,7 +18,7 @@ SRC_FILES = $(wildcard $(SRC)/*.cpp) $(wildcard $(SRC)/*/*.cpp)
 DEPD = $(wildcard $(SRC)/*.h) $(wildcard $(SRC)/*/*.h)
 BIN=bin
 DATA=data/mp4
-INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -Isrc -I/ -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
+INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -Isrc -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
 
 # All files
 OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
@@ -27,7 +27,7 @@ OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
 cccyan=$(shell echo "\033[0;36m")
 ccend=$(shell echo "\033[0m")
 
-all: VideoStitch
+all: VideoStitch CameraCalibrator
 
 BUILD_PRINT = \e[1;34mBuilding $<\e[0m
 
@@ -45,8 +45,15 @@ VideoStitch: $(OBJ_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? -o $(BIN)/$@ $(LDFLAGS)
 
+CameraCalibrator:
+	@echo "$(cccyan)[Ganerate camera calibrator]$(ccend)"
+	$(CC) -o $(BIN)/$@ tools/calibration/CameraCalibrator.cpp $(LDFLAGS)
+
 run:
 	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --duration 90 --output StitchResult.avi
+
+calibrator:
+	$(BIN)/CameraCalibrator data/CalibrationImages/input_config.xml
 
 clean:
 	-rm -r $(BIN)/VideoStitch

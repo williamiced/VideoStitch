@@ -17,34 +17,7 @@ bool checkArguments(int argc, char** argv) {
 	return true;
 }
 
-void VideoStitcher::calcProjectionMatrix() {
-	int seqCount = mVL->getVideoCount();
-	for (int v=0; v<seqCount; v++) 
-		mProjMat.push_back(Mat::eye(2, 3, CV_32F));
-	/** 
-		[TODO]
-			Use calibration file to get the proejction matrix
-	*/
-}
-
-void VideoStitcher::projectOnCanvas(GpuMat& canvas, Mat frame, int vIdx) {
-	GpuMat newFrame;
-	GpuMat oriFrame(frame);
-	cv::cuda::warpAffine(oriFrame, newFrame, mProjMat[vIdx], Size(frame.cols, frame.rows));
-	
-	// [TODO] Currently copyTo is a bottleneck which reduce fps from 40 to 13
-	newFrame.copyTo( canvas );
-	/** 
-		[TODO]
-			Paste new frame onto canvas
-	*/
-}
-
 VideoStitcher::~VideoStitcher() {
-	delete mVL;
-	delete mLP;
-	delete mEP;
-	delete mVS;
 }
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]) {
@@ -55,13 +28,18 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 			3. Calculate projection matrixs
 	*/
 	logMsg(LOG_INFO, "[Do preprocess...]");
-	mVL = new VideoLoader( getCmdOption(argv, argv + argc, "--input") );
+	mVL = shared_ptr<VideoLoader>(new VideoLoader( getCmdOption(argv, argv + argc, "--input") ) );
 	mVL->loadCalibrationFile( getCmdOption(argv, argv + argc, "--calibration") );
 	mVL->preloadVideoForDuration( stoi( getCmdOption(argv, argv + argc, "--duration")) );
-	calcProjectionMatrix();
-	mLP = new LensProcessor();
-	mEP = new ExposureProcessor();
-	mVS = new VideoStablizer();
+	
+	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData(), mVL->getVideoSize() ));
+	mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor());
+	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
+	mMP = shared_ptr<MappingProjector>(new MappingProjector());
+
+	mMP->calcProjectionMatrix( mVL->getCalibrationData() );
+	//Mat image = imread("data/testImg.JPG", CV_LOAD_IMAGE_COLOR);
+	//mLP->undistort(image);
 }
 
 void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
@@ -89,7 +67,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			Mat frame;
 			mVL->getFrameInSeq(f, v, frame);
 			mLP->undistort(frame);
-			projectOnCanvas(targetCanvas, frame, v);
+			mMP->projectOnCanvas(targetCanvas, frame, v);
 		}
 		mEP->exposureBlending(targetCanvas);
 		mVS->stablize(targetCanvas);
