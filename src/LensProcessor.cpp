@@ -12,7 +12,9 @@ LensProcessor::LensProcessor(map<string, Mat> calibrationData, Size videoSize) {
 	mD = calibrationData["distCoeffs"];
 
 	Mat mapX, mapY;
-	initUndistortRectifyMap(mA, mD, Mat::eye(3, 3, CV_32F), mA, videoSize, CV_32FC1, mapX, mapY);
+	Rect newCamROI;
+	//Mat newCamMat = getOptimalNewCameraMatrix(mA, mD, videoSize, 1, Size(), &newCamROI);
+	initUndistortRectifyMap(mA, mD, Mat(), Mat(), videoSize, CV_32FC1, mapX, mapY);
 	mUndistortMapX.upload(mapX);
 	mUndistortMapY.upload(mapY);
 }

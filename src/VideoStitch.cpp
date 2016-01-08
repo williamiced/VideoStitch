@@ -27,19 +27,23 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 			2. Load calibration files
 			3. Calculate projection matrixs
 	*/
-	logMsg(LOG_INFO, "[Do preprocess...]");
-	mVL = shared_ptr<VideoLoader>(new VideoLoader( getCmdOption(argv, argv + argc, "--input") ) );
+	logMsg(LOG_INFO, "=== Do preprocess ===");
+	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input") ) );
 	mVL->loadCalibrationFile( getCmdOption(argv, argv + argc, "--calibration") );
 	mVL->preloadVideoForDuration( stoi( getCmdOption(argv, argv + argc, "--duration")) );
 	
 	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData(), mVL->getVideoSize() ));
 	mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor());
 	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
-	mMP = shared_ptr<MappingProjector>(new MappingProjector());
+	mMP = shared_ptr<MappingProjector>( new MappingProjector(mVL->getVideoCount(), mVL->getVideoSize() ));
 
 	mMP->calcProjectionMatrix( mVL->getCalibrationData() );
-	//Mat image = imread("data/testImg.JPG", CV_LOAD_IMAGE_COLOR);
-	//mLP->undistort(image);
+	logMsg(LOG_INFO, "Complete projection matrix calculation");
+	/*
+	Mat image = imread("data/testImg.JPG", CV_LOAD_IMAGE_COLOR);
+	mLP->undistort(image);
+	imwrite("data/undistort.JPG", image);
+	*/
 }
 
 void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
@@ -52,33 +56,35 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			5. Do stablize
 			6. Ouput
 	*/
-	logMsg(LOG_INFO, "[Do real-time process...]");
+	logMsg(LOG_INFO, "=== Do real-time process ===");
 	double videoFPS = mVL->getVideoFPS();
-	Size outputSize = Size(2704, 2028); // [TODO]: not decided yet
+	Size outputSize = mVL->getVideoSize(); // [TODO]: not decided yet
 	
-	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, outputSize);
+	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT));
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
 	for (int f=0; f<duration; f++) {
 		logMsg(LOG_DEBUG, stringFormat("\tProcess frame # %d", f ));
-		GpuMat targetCanvas;
+		Mat targetCanvas(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+		vector<Mat> frames;
 		for (int v=0; v<seqCount; v++) {
 			Mat frame;
 			mVL->getFrameInSeq(f, v, frame);
 			mLP->undistort(frame);
-			mMP->projectOnCanvas(targetCanvas, frame, v);
+			frames.push_back(frame);
 		}
-		mEP->exposureBlending(targetCanvas);
-		mVS->stablize(targetCanvas);
+		mMP->projectOnCanvas(targetCanvas, frames);
+		//mEP->exposureBlending(targetCanvas);
+		//mVS->stablize(targetCanvas);
 		
-		Mat canvas;
-		targetCanvas.download(canvas);	
-		
-		(*outputVideo) << canvas;
+		//Mat canvas;
+		//targetCanvas.download(canvas);	
+		cout << targetCanvas.cols << ", " << targetCanvas.rows << endl;
+		(*outputVideo) << targetCanvas;
 		
 	}
-	logMsg(LOG_INFO, "[Done stitching]");
+	logMsg(LOG_INFO, "=== Done stitching ===");
 }
 
 int main(int argc, char* argv[]) {

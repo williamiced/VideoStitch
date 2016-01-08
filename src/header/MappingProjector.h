@@ -15,15 +15,28 @@ using namespace cv::cuda;
 
 class MappingProjector {
 	private:
-		vector<Mat> mProjMat;
+		/** 
+			Projection Matrix:
+				Dimenstion: Width * Height * [ViewCount * (weight, X, Y) ]
+		*/
+		vector< vector<Mat> > mProjMat;
 		Mat mA; // Also known as K
-		Mat mRT;
+		Mat mD;
+		Mat mProjMap;
+		vector<cv::Point2d> mViewCenter;
+		double mFocalLength;
+		int mViewCount;
+		Size mViewSize;
+
+		void getAngleDiff(double& theta, double& phi, int vIdx);
+		Mat calcWeightForEachView(double theta, double phi);
+		bool isViewCloseEnough(double theta, double phi, int vIdx);
 
 	public:
-		void calcProjectionMatrix(map<string, Mat> calibrationData);
-		void projectOnCanvas(GpuMat& canvas, Mat frame, int vIdx);
+		void calcProjectionMatrix(map< string, Mat > calibrationData);
+		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 
-		MappingProjector();
+		MappingProjector(int viewCount, Size viewSize);
 		~MappingProjector();
 };
 

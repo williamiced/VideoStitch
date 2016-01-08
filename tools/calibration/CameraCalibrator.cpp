@@ -562,6 +562,9 @@ static void saveCameraParams( Settings& s, Size& imageSize, Mat& cameraMatrix, M
 {
     FileStorage fs( s.outputFileName, FileStorage::WRITE );
 
+    cout << "Rvec[0] size: " << rvecs[0].cols << ", " << rvecs[0].rows << endl;
+    cout << "Tvec[0] size: " << tvecs[0].cols << ", " << tvecs[0].rows << endl;
+
     time_t tm;
     time( &tm );
     struct tm *t2 = localtime( &tm );

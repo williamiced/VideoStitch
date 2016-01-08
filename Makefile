@@ -50,7 +50,7 @@ CameraCalibrator:
 	$(CC) -o $(BIN)/$@ tools/calibration/CameraCalibrator.cpp $(LDFLAGS)
 
 run:
-	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --duration 90 --output StitchResult.avi
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --duration 10 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages/input_config.xml
