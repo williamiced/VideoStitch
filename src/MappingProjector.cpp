@@ -8,7 +8,7 @@ void MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) 
 	mA.at<float>(0, 0) = static_cast<float> ( mFocalLength );
 	mA.at<float>(1, 1) = static_cast<float> ( mFocalLength );
 
-	mSphericalWarper = shared_ptr<cv::detail::SphericalWarper>( new cv::detail::SphericalWarper(1.f) );
+	mSphericalWarper = shared_ptr<cv::detail::SphericalWarperGpu>( new cv::detail::SphericalWarperGpu(1.f) );
 	constructSphereMap();
 }
 
@@ -25,28 +25,20 @@ void MappingProjector::constructSphereMap() {
 
 	// Calculate mR
 	for (int v=0; v<mViewCount; v++) {
+		if (mDebugView >= 0 && mDebugView != v)
+			continue;
 		Mat r = Mat::zeros(3, 3, CV_32F);
 		struct MutualProjectParam vP = mViewParams[v];
+		double alpha = vP.y;
+		double beta = vP.p;
+		double gamma = vP.r;
 
-		/*
-		r.at<float>(0, 0) = cos(vP.y) * cos(vP.p);
-		r.at<float>(0, 1) = cos(vP.y) * sin(vP.p) * sin(vP.r) - sin(vP.y) * cos(vP.r);
-		r.at<float>(0, 2) = cos(vP.y) * sin(vP.p) * cos(vP.r) + sin(vP.y) * sin(vP.r);
-
-		r.at<float>(1, 0) = sin(vP.y) * cos(vP.p);
-		r.at<float>(1, 1) = sin(vP.y) * sin(vP.p) * sin(vP.r) + cos(vP.y) * cos(vP.r);
-		r.at<float>(1, 2) = sin(vP.y) * sin(vP.p) * cos(vP.r) - cos(vP.y) * sin(vP.r);
-
-		r.at<float>(2, 0) = -sin(vP.p);
-		r.at<float>(2, 1) = cos(vP.p) * sin(vP.r);
-		r.at<float>(2, 2) = cos(vP.p) * cos(vP.r);
-		*/
-		Mat rotationVec(1, 3, CV_32F);
-		rotationVec.at<float>(0, 0) = vP.p;
-		rotationVec.at<float>(0, 1) = vP.y;
-		rotationVec.at<float>(0, 2) = vP.r;
-		Rodrigues(rotationVec, r);
-
+		// Take camera as reference coordinate system, around: x-axis -> pitch, y-axis -> yaw, z->axis -> roll
+		Mat Rz = getZMatrix(gamma);
+		Mat Ry = getYMatrix(alpha);
+		Mat Rx = getXMatrix(beta);
+		// r = Ry * Rz * Rx;
+		r = Ry * Rx * Rz;
 		mR.push_back( r );
 	}
 
@@ -72,6 +64,36 @@ void MappingProjector::constructSphereMap() {
 			}
 		}
 	}
+}
+
+Mat MappingProjector::getZMatrix(double alpha) {
+	Mat z = Mat::zeros(3, 3, CV_32F);
+	z.at<float>(0, 0) = cos(alpha);
+	z.at<float>(0, 1) = -sin(alpha);
+	z.at<float>(1, 0) = sin(alpha);
+	z.at<float>(1, 1) = cos(alpha);
+	z.at<float>(2, 2) = 1.f;
+	return z;
+}
+
+Mat MappingProjector::getYMatrix(double beta) {
+	Mat y = Mat::zeros(3, 3, CV_32F);
+	y.at<float>(0, 0) = cos(beta);
+	y.at<float>(0, 2) = sin(beta);
+	y.at<float>(1, 1) = 1.f;
+	y.at<float>(2, 0) = -sin(beta);
+	y.at<float>(2, 2) = cos(beta);
+	return y;
+}
+
+Mat MappingProjector::getXMatrix(double gamma) {
+	Mat x = Mat::zeros(3, 3, CV_32F);
+	x.at<float>(0, 0) = 1.f;
+	x.at<float>(1, 1) = cos(gamma);
+	x.at<float>(1, 2) = -sin(gamma);
+	x.at<float>(2, 1) = sin(gamma);
+	x.at<float>(2, 2) = cos(gamma);
+	return x;
 }
 
 void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {

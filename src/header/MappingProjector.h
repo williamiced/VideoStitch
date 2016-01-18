@@ -19,7 +19,7 @@ class MappingProjector {
 			Projection Matrix:
 				Dimenstion: Width * Height * [ViewCount * (weight, X, Y) ]
 		*/
-		shared_ptr<cv::detail::SphericalWarper> mSphericalWarper;
+		shared_ptr<cv::detail::SphericalWarperGpu> mSphericalWarper;
 		vector< Mat > mR;
 		
 		vector<struct MutualProjectParam> mViewParams;
@@ -37,6 +37,9 @@ class MappingProjector {
 		double getTauAngle(double t1, double p1, double t2, double p2) ;
 		void getUVMapping(double t1, double p1, double t2, double p2, double &u, double &v);
 		bool isInsideImage( double x, double y );
+		Mat getZMatrix(double alpha);
+		Mat getYMatrix(double beta);
+		Mat getXMatrix(double gamma);
 
 	public:
 		void calcProjectionMatrix(map< string, Mat > calibrationData);
