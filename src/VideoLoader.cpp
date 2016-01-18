@@ -53,6 +53,10 @@ map<string, Mat> VideoLoader::getCalibrationData() {
 	return mCalibrationMatrix;
 }
 
+vector<struct MutualProjectParam> VideoLoader::getPTOData() {
+	return mMutualParams;
+}
+
 VideoCapture* VideoLoader::getVideo(int idx) {
 	return mVideoList[idx];
 }
@@ -79,6 +83,72 @@ void VideoLoader::loadCalibrationFile(char* calFileName) {
 	FileStorage fs(calFileName, FileStorage::READ);
 	fs["cameraMatA"] >> mCalibrationMatrix["cameraMatA"];
 	fs["distCoeffs"] >> mCalibrationMatrix["distCoeffs"];
+}
+
+void VideoLoader::loadPTOFile(char* ptoFileName) {
+	ifstream ptofile(ptoFileName);
+	string line;
+	double cropFactor = 1.0f;
+	double hfov = 0.0f;
+
+	while ( getline(ptofile, line) ) {
+		if ( line.find("#") == 0) { // Comment
+			if (line.find("cropFactor=") != string::npos ) 
+				cropFactor = stod( line.substr(line.find("cropFactor=") + strlen("cropFactor=")) );
+			continue;
+		}
+		if ( line.find("i") != 0) // We are not care about
+			continue;
+		
+		vector<string> tokens;
+		boost::split( tokens, line, boost::is_any_of(" ") );
+
+		struct MutualProjectParam projectParams;
+		for (int i=0; i<(int)tokens.size(); i++) {
+			if ( tokens[i].find("v") == 0 && tokens[i].find("v=") == string::npos) 
+				hfov = stod( tokens[i].substr(1) ) ;
+			else if ( tokens[i].find("r") == 0 ) 
+				projectParams.r = stod( tokens[i].substr(1) ) * M_PI / 180.f;
+			else if ( tokens[i].find("p") == 0 )
+				projectParams.p = stod( tokens[i].substr(1) ) * M_PI / 180.f;
+			else if ( tokens[i].find("y") == 0 )
+				projectParams.y = stod( tokens[i].substr(1) ) * M_PI / 180.f;
+			// Need to make clear what is TrX / TrY / TrZ
+			else if ( tokens[i].find("TrX") == 0 )
+				projectParams.TrX = stod( tokens[i].substr(3) );
+			else if ( tokens[i].find("TrY") == 0 )
+				projectParams.TrY = stod( tokens[i].substr(3) );
+			else if ( tokens[i].find("TrZ") == 0 )
+				projectParams.TrZ = stod( tokens[i].substr(3) );
+		}
+		mMutualParams.push_back(projectParams);
+	}
+
+	if (hfov > 0.f) 
+		calcFocalLengthInPixel(cropFactor, hfov);
+}
+
+double VideoLoader::getFocalLength() {
+	return mFocalLength;
+}
+
+void VideoLoader::calcFocalLengthInPixel(double crop, double hfov) {
+	mFocalLength = 0.f;
+	// calculate diagonal of film
+    double d = sqrt(36.0f * 36.0f + 24.0f * 24.0f) / crop;
+    double r = (double)mVideoSize.width / mVideoSize.height;
+    
+    // calculate the sensor width and height that fit the ratio
+    // the ratio is determined by the size of our image.
+    double sensorSizeX;
+    sensorSizeX = d / sqrt(1 + 1/(r*r));
+    
+    // Assume the input is RECTILINEAR
+    mFocalLength = (sensorSizeX / 2.0f) / tan( hfov / 180.0f * M_PI / 2);
+    // If it is equirectangular
+    // mFocalLength = (sensorSizeX / (hfov / 180.f * M_PI));
+
+    mFocalLength = (mFocalLength / sensorSizeX) * mVideoSize.width;
 }
 
 VideoLoader::VideoLoader(char* inputFileName) {

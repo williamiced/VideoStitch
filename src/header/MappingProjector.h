@@ -19,24 +19,30 @@ class MappingProjector {
 			Projection Matrix:
 				Dimenstion: Width * Height * [ViewCount * (weight, X, Y) ]
 		*/
-		vector< vector<Mat> > mProjMat;
+		shared_ptr<cv::detail::SphericalWarper> mSphericalWarper;
+		vector< Mat > mR;
+		
+		vector<struct MutualProjectParam> mViewParams;
+		vector< vector <Mat> > mProjMap;
 		Mat mA; // Also known as K
 		Mat mD;
-		Mat mProjMap;
-		vector<cv::Point2d> mViewCenter;
 		double mFocalLength;
 		int mViewCount;
 		Size mViewSize;
 
-		void getAngleDiff(double& theta, double& phi, int vIdx);
+		int mDebugView;
+
+		void constructSphereMap();
 		Mat calcWeightForEachView(double theta, double phi);
-		bool isViewCloseEnough(double theta, double phi, int vIdx);
+		double getTauAngle(double t1, double p1, double t2, double p2) ;
+		void getUVMapping(double t1, double p1, double t2, double p2, double &u, double &v);
+		bool isInsideImage( double x, double y );
 
 	public:
 		void calcProjectionMatrix(map< string, Mat > calibrationData);
 		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 
-		MappingProjector(int viewCount, Size viewSize);
+		MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength);
 		~MappingProjector();
 };
 

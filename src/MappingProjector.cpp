@@ -1,82 +1,77 @@
 #include <header/MappingProjector.h>
 
 void MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) {
-	mA = calibrationData["cameraMatA"];
+	calibrationData["cameraMatA"].convertTo(mA, CV_32F);
 	mD = calibrationData["distCoeffs"];
 
-	mFocalLength = sqrt( pow(mA.at<double>(0, 0), 2) + pow(mA.at<double>(1, 1), 2)  );
+	// Refresh focal length from pto file
+	mA.at<float>(0, 0) = static_cast<float> ( mFocalLength );
+	mA.at<float>(1, 1) = static_cast<float> ( mFocalLength );
 
+	mSphericalWarper = shared_ptr<cv::detail::SphericalWarper>( new cv::detail::SphericalWarper(1.f) );
+	constructSphereMap();
+}
+
+void MappingProjector::constructSphereMap() {
+	// Initialize the map
 	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
 		vector<Mat> weightMatRow;
 		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
-			double theta = x * 2 * M_PI / OUTPUT_PANO_WIDTH;
-			double phi = y * M_PI / OUTPUT_PANO_HEIGHT;
-
-			Mat weightMat = calcWeightForEachView(theta, phi);
+			Mat weightMat = Mat::zeros(mViewCount, 3, CV_32S);
 			weightMatRow.push_back(weightMat);
 		}
-		mProjMat.push_back(weightMatRow);
+		mProjMap.push_back(weightMatRow);
 	}
-}
 
-Mat MappingProjector::calcWeightForEachView(double theta, double phi) {
-	Mat wM(mViewCount, 3, CV_32S);
-
-	int xc = mViewSize.width/2;
-	int yc = mViewSize.height/2;
+	// Calculate mR
 	for (int v=0; v<mViewCount; v++) {
-		if ( !isViewCloseEnough(theta, phi, v) ) {
-			wM.at<int>(v, 0) = 0;
-			wM.at<int>(v, 1) = 0;
-			wM.at<int>(v, 2) = 0;
-		} else {
-			// Uniform blending
-			wM.at<int>(v, 0) = 1;
+		Mat r = Mat::zeros(3, 3, CV_32F);
+		struct MutualProjectParam vP = mViewParams[v];
 
-			double thetaDiff = theta;
-			double phiDiff = phi;
-			getAngleDiff(thetaDiff, phiDiff, v);
+		/*
+		r.at<float>(0, 0) = cos(vP.y) * cos(vP.p);
+		r.at<float>(0, 1) = cos(vP.y) * sin(vP.p) * sin(vP.r) - sin(vP.y) * cos(vP.r);
+		r.at<float>(0, 2) = cos(vP.y) * sin(vP.p) * cos(vP.r) + sin(vP.y) * sin(vP.r);
 
-			int x = (int) mFocalLength * tan(thetaDiff);
-			int y = (int) mFocalLength * tan(phiDiff) / cos(thetaDiff);
-			int xd = (x + xc) < 0 ? 0 : ( (x + xc) < (mViewSize.width - 1) ? (x + xc) : (mViewSize.width - 1) ) ;
-			int yd = (y + yc) < 0 ? 0 : ( (y + yc) < (mViewSize.height - 1) ? (y + yc) : (mViewSize.height - 1) ) ;
-			
-			if (xd != (x + xc) || yd != (y+yc)) 
-				wM.at<int>(v, 0) = 0;
-			else {
-				wM.at<int>(v, 1) = xd;
-				wM.at<int>(v, 2) = yd;
+		r.at<float>(1, 0) = sin(vP.y) * cos(vP.p);
+		r.at<float>(1, 1) = sin(vP.y) * sin(vP.p) * sin(vP.r) + cos(vP.y) * cos(vP.r);
+		r.at<float>(1, 2) = sin(vP.y) * sin(vP.p) * cos(vP.r) - cos(vP.y) * sin(vP.r);
+
+		r.at<float>(2, 0) = -sin(vP.p);
+		r.at<float>(2, 1) = cos(vP.p) * sin(vP.r);
+		r.at<float>(2, 2) = cos(vP.p) * cos(vP.r);
+		*/
+		Mat rotationVec(1, 3, CV_32F);
+		rotationVec.at<float>(0, 0) = vP.p;
+		rotationVec.at<float>(0, 1) = vP.y;
+		rotationVec.at<float>(0, 2) = vP.r;
+		Rodrigues(rotationVec, r);
+
+		mR.push_back( r );
+	}
+
+
+	// Calculate (x, y) -> (u, v) for each view
+	for (int y=0; y<mViewSize.height; y++) {
+		for (int x=0; x<mViewSize.width; x++) {
+			for (int v=0; v<mViewCount; v++) {
+				if (mDebugView >= 0 && mDebugView != v)
+					continue;
+				Point2f mapPnt = mSphericalWarper->warpPoint(Point2f(x, y), mA, mR[v]);
+				// mapPnt: x = (-pi ~ pi), y = (0 ~ pi)
+				int oX = static_cast<int> ( (mapPnt.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
+				int oY = static_cast<int> ( mapPnt.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+
+				//cout << "map: (" << oX << ", " << oY << ") ... to v ( " << x << ", " << y << ")" << endl;
+
+				Mat weightMat = mProjMap[oY][oX];
+				weightMat.at<int>(v, 0) = 1;
+				weightMat.at<int>(v, 1) = x;
+				weightMat.at<int>(v, 2) = y;
+				mProjMap[oY][oX] = weightMat;
 			}
 		}
 	}
-	return wM;
-}
-
-void MappingProjector::getAngleDiff(double& theta, double& phi, int vIdx) {
-	bool isCrossTheta = false;
-	bool isCrossPhi = false;
-
-	double thetaDist = fabs(theta - mViewCenter[vIdx].x);
-	if (thetaDist > M_PI) {
-		thetaDist = 2*M_PI - thetaDist;
-		isCrossTheta = true;
-	}
-	theta = thetaDist * ((( !isCrossTheta && theta < mViewCenter[vIdx].x ) || ( isCrossTheta && theta >= mViewCenter[vIdx].x )) ? (-1) : 1);
-	phi = phi - mViewCenter[vIdx].y;	
-}
-
-bool MappingProjector::isViewCloseEnough(double theta, double phi, int vIdx) {
-	double thetaAbs = theta;
-	double phiAbs = phi;
-	getAngleDiff(thetaAbs, phiAbs, vIdx);
-	thetaAbs = fabs(thetaAbs);
-	phiAbs = fabs(phiAbs);
-	double deltaSigmaStep1 = sqrt( pow(sin(thetaAbs/2), 2) + cos(theta) * cos(mViewCenter[vIdx].x) * pow(sin(phiAbs/2), 2) );
-	double deltaSigmaStep2 = 2 * asin( deltaSigmaStep1 );
-	double greatCircleDist = PROJECT_CIRCLE_LEN * deltaSigmaStep2;
-
-	return greatCircleDist < 1;
 }
 
 void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
@@ -88,69 +83,41 @@ void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
 	for (int y=0; y<canvas.rows; y++) {
 		for (int x=0; x<canvas.cols; x++) {
 			int totalWeight = 0;
-			Mat pixelMat = mProjMat[y][x];
+			Mat pixelMat = mProjMap[y][x];
 			Vec3b pixel = Vec3b(0, 0, 0);
-			for (int v=0; v<mViewCount; v++)
+			// Get weight
+			for (int v=0; v<mViewCount; v++) {
+				if (mDebugView >= 0 && mDebugView != v)
+					continue;
 				if (pixelMat.at<int>(v, 0) != 0)
 					totalWeight += 1;
-			/*
-			if (totalWeight > 0)
-				canvas.at<Vec3b>(y, x) = Vec3b(255, 255, 255);
-			else
-				canvas.at<Vec3b>(y, x) = Vec3b(0, 0, 0);
-			continue;
-			*/
+			}
+
 			for (int v=0; v<mViewCount; v++) {
+				if (mDebugView >= 0 && mDebugView != v)
+					continue;
 				if (pixelMat.at<int>(v, 0) == 0)
 					continue;
-				/*
-				if (v == 0)
-					pixel += Vec3b(50, 0, 0);
-				else if (v == 1)
-					pixel += Vec3b(100, 0, 0);
-				else if (v == 2)
-					pixel += Vec3b(0, 50, 0);
-				else if (v == 3)
-					pixel += Vec3b(0, 100, 0);
-				else if (v == 4)
-					pixel += Vec3b(0, 0, 50);
-				else if (v == 5)
-					pixel += Vec3b(0, 0, 100);
-				*/
 				int px = pixelMat.at<int>(v, 1) ;
 				int py = pixelMat.at<int>(v, 2) ;
-				//cout << "v1: " << pixelMat.at<int>(v, 1) << ", v2: " << pixelMat.at<int>(v, 2) << endl;
-				pixel += pixelMat.at<int>(v, 0) * frames[v].at<Vec3b>(py, px) / totalWeight;
+				pixel += (static_cast<float> (pixelMat.at<int>(v, 0)) / totalWeight) * frames[v].at<Vec3b>(py, px) ;
 			}
-			//if (totalWeight > 0) // avoid floating number problem
-			//	pixel /= totalWeight;
-			//cout << "Color: " << (int)pixel(0) << ", " << (int)pixel(1) << ", " << (int)pixel(2) << endl;
 			canvas.at<Vec3b>(y, x) = pixel;
-
 		}
 	}
-
-
-	
-	// [TODO] Currently copyTo is a bottleneck which reduce fps from 40 to 13
-	// newFrame.copyTo( canvas );
-	/** 
-		[TODO]
-			Paste new frame onto canvas
-	*/
 }
 
-MappingProjector::MappingProjector(int viewCount, Size viewSize) {
+MappingProjector::MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength) {
 	mViewCount = viewCount;
 	mViewSize = viewSize;
+	mViewParams = params;
+	mFocalLength = focalLength;
+	mDebugView = -1;
 
-	// [TODO] Not yet generated
-	mViewCenter.push_back( cv::Point2d(0.f, M_PI/2) );
-	mViewCenter.push_back( cv::Point2d(M_PI/2, M_PI/2) );
-	mViewCenter.push_back( cv::Point2d(M_PI, M_PI/2) );
-	mViewCenter.push_back( cv::Point2d(M_PI*3/2, M_PI/2) );
-	mViewCenter.push_back( cv::Point2d(0.f, 0.f) );
-	mViewCenter.push_back( cv::Point2d(0.f, M_PI) );
+	cout << "Focal Length: " << mFocalLength << endl;
+	for (int v=0; v<mViewCount; v++)
+		cout << "V: Theta: " << params[v].y << ", Phi: " << params[v].p << ", Omega: " << params[v].r << endl;
+
 }
 
 MappingProjector::~MappingProjector() {

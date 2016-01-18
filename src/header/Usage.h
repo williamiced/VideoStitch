@@ -20,6 +20,15 @@ enum logTypeEnum {
 	LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_DEBUG
 };
 
+struct MutualProjectParam {
+	double r;
+	double p;
+	double y;
+	double TrX;
+	double TrY;
+	double TrZ;
+};
+
 const boost::unordered_map<returnValEnum, const char*> returnValToString = map_list_of
     (N_NORMAL, "Successfully executes.")
     (E_BAD_ARGUMENTS, "Bad arguments. Please check the usage.")

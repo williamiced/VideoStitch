@@ -30,15 +30,24 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Do preprocess ===");
 	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input") ) );
 	mVL->loadCalibrationFile( getCmdOption(argv, argv + argc, "--calibration") );
+	mVL->loadPTOFile( getCmdOption(argv, argv + argc, "--pto") );
 	mVL->preloadVideoForDuration( stoi( getCmdOption(argv, argv + argc, "--duration")) );
+	logMsg(LOG_INFO, "=== Data loaded complete ===");
 	
+	logMsg(LOG_INFO, "=== Initialize Lens Processor ===");
 	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData(), mVL->getVideoSize() ));
-	mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor());
-	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
-	mMP = shared_ptr<MappingProjector>( new MappingProjector(mVL->getVideoCount(), mVL->getVideoSize() ));
 
+	logMsg(LOG_INFO, "=== Initialize ExposureProcessor ===");
+	mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor());
+
+	logMsg(LOG_INFO, "=== Initialize Video Stablizer ===");
+	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
+
+	logMsg(LOG_INFO, "=== Initialize Mapping Projector ===");
+	mMP = shared_ptr<MappingProjector>( new MappingProjector(mVL->getVideoCount(), mVL->getVideoSize(), mVL->getPTOData(), mVL->getFocalLength()));
+
+	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
 	mMP->calcProjectionMatrix( mVL->getCalibrationData() );
-	logMsg(LOG_INFO, "Complete projection matrix calculation");
 	/*
 	Mat image = imread("data/testImg.JPG", CV_LOAD_IMAGE_COLOR);
 	mLP->undistort(image);
@@ -58,7 +67,6 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	*/
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 	double videoFPS = mVL->getVideoFPS();
-	Size outputSize = mVL->getVideoSize(); // [TODO]: not decided yet
 	
 	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT));
 
@@ -71,7 +79,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		for (int v=0; v<seqCount; v++) {
 			Mat frame;
 			mVL->getFrameInSeq(f, v, frame);
-			mLP->undistort(frame);
+			//mLP->undistort(frame);
 			frames.push_back(frame);
 		}
 		mMP->projectOnCanvas(targetCanvas, frames);
@@ -80,7 +88,6 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		
 		//Mat canvas;
 		//targetCanvas.download(canvas);	
-		cout << targetCanvas.cols << ", " << targetCanvas.rows << endl;
 		(*outputVideo) << targetCanvas;
 		
 	}
