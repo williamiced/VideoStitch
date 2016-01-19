@@ -33,6 +33,7 @@ class MappingProjector {
 		int mDebugView;
 
 		void constructSphereMap();
+		void examineSphereMap();
 		Mat calcWeightForEachView(double theta, double phi);
 		double getTauAngle(double t1, double p1, double t2, double p2) ;
 		void getUVMapping(double t1, double p1, double t2, double p2, double &u, double &v);

@@ -7,9 +7,12 @@ void MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) 
 	// Refresh focal length from pto file
 	mA.at<float>(0, 0) = static_cast<float> ( mFocalLength );
 	mA.at<float>(1, 1) = static_cast<float> ( mFocalLength );
+	mA.at<float>(0, 2) = static_cast<float> ( mViewSize.width/2 );
+	mA.at<float>(1, 2) = static_cast<float> ( mViewSize.height/2 );
 
 	mSphericalWarper = shared_ptr<cv::detail::SphericalWarperGpu>( new cv::detail::SphericalWarperGpu(1.f) );
 	constructSphereMap();
+	examineSphereMap();
 }
 
 void MappingProjector::constructSphereMap() {
@@ -42,7 +45,6 @@ void MappingProjector::constructSphereMap() {
 		mR.push_back( r );
 	}
 
-
 	// Calculate (x, y) -> (u, v) for each view
 	for (int y=0; y<mViewSize.height; y++) {
 		for (int x=0; x<mViewSize.width; x++) {
@@ -68,32 +70,63 @@ void MappingProjector::constructSphereMap() {
 
 Mat MappingProjector::getZMatrix(double alpha) {
 	Mat z = Mat::zeros(3, 3, CV_32F);
-	z.at<float>(0, 0) = cos(alpha);
-	z.at<float>(0, 1) = -sin(alpha);
-	z.at<float>(1, 0) = sin(alpha);
-	z.at<float>(1, 1) = cos(alpha);
+	float cosz = cos(alpha);
+	float sinz = sin(alpha);
+	z.at<float>(0, 0) = cosz;
+	z.at<float>(0, 1) = -sinz;
+	z.at<float>(1, 0) = sinz;
+	z.at<float>(1, 1) = cosz;
 	z.at<float>(2, 2) = 1.f;
 	return z;
 }
 
 Mat MappingProjector::getYMatrix(double beta) {
 	Mat y = Mat::zeros(3, 3, CV_32F);
-	y.at<float>(0, 0) = cos(beta);
-	y.at<float>(0, 2) = sin(beta);
+	float cosy = cos(beta);
+	float siny = sin(beta);
+	y.at<float>(0, 0) = cosy;
+	y.at<float>(0, 2) = siny;
 	y.at<float>(1, 1) = 1.f;
-	y.at<float>(2, 0) = -sin(beta);
-	y.at<float>(2, 2) = cos(beta);
+	y.at<float>(2, 0) = -siny;
+	y.at<float>(2, 2) = cosy;
 	return y;
 }
 
 Mat MappingProjector::getXMatrix(double gamma) {
 	Mat x = Mat::zeros(3, 3, CV_32F);
+	float cosx = cos(gamma);
+	float sinx = sin(gamma);
 	x.at<float>(0, 0) = 1.f;
-	x.at<float>(1, 1) = cos(gamma);
-	x.at<float>(1, 2) = -sin(gamma);
-	x.at<float>(2, 1) = sin(gamma);
-	x.at<float>(2, 2) = cos(gamma);
+	x.at<float>(1, 1) = cosx;
+	x.at<float>(1, 2) = -sinx;
+	x.at<float>(2, 1) = sinx;
+	x.at<float>(2, 2) = cosx;
 	return x;
+}
+
+void MappingProjector::examineSphereMap() {
+	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
+		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
+			int totalWeight = 0;
+			for (int v=0; v<mViewCount; v++) {
+				if (mDebugView >= 0 && mDebugView != v)
+					continue;
+				if (mProjMap[y][x].at<int>(v, 0) != 0)
+					totalWeight += 1;
+			}
+
+			if (totalWeight == 0) {
+				if (x > 0)
+					mProjMap[y][x] = mProjMap[y][x-1];
+				else if (y > 0)
+					mProjMap[y][x] = mProjMap[y-1][x];
+				else {
+					cout << "Cannot handle map ("<< y << ", " << x << ")" << endl;
+				}
+			}
+
+		}
+	}
 }
 
 void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
