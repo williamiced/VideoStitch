@@ -33,9 +33,11 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	mVL->loadPTOFile( getCmdOption(argv, argv + argc, "--pto") );
 	mVL->preloadVideoForDuration( stoi( getCmdOption(argv, argv + argc, "--duration")) );
 	logMsg(LOG_INFO, "=== Data loaded complete ===");
-	
+
+#ifdef USE_LENS_UNDISTORT	
 	logMsg(LOG_INFO, "=== Initialize Lens Processor ===");
-	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData(), mVL->getVideoSize() ));
+	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData(), mVL->getVideoSize(), mVL->getFocalLength()) );
+#endif
 
 	logMsg(LOG_INFO, "=== Initialize ExposureProcessor ===");
 	mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor());
@@ -47,7 +49,8 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	mMP = shared_ptr<MappingProjector>( new MappingProjector(mVL->getVideoCount(), mVL->getVideoSize(), mVL->getPTOData(), mVL->getFocalLength()));
 
 	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
-	mMP->calcProjectionMatrix( mVL->getCalibrationData() );
+	mOutputVideoSize = mMP->calcProjectionMatrix( mVL->getCalibrationData() );
+
 	/*
 	Mat image = imread("data/testImg.JPG", CV_LOAD_IMAGE_COLOR);
 	mLP->undistort(image);
@@ -68,18 +71,20 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 	double videoFPS = mVL->getVideoFPS();
 	
-	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT));
+	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, mOutputVideoSize );
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
 	for (int f=0; f<duration; f++) {
 		logMsg(LOG_DEBUG, stringFormat("\tProcess frame # %d", f ));
-		Mat targetCanvas(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+		Mat targetCanvas(mOutputVideoSize, CV_8UC3);
 		vector<Mat> frames;
 		for (int v=0; v<seqCount; v++) {
 			Mat frame;
 			mVL->getFrameInSeq(f, v, frame);
-			//mLP->undistort(frame);
+#ifdef USE_LENS_UNDISTORT	
+			mLP->undistort(frame);
+#endif
 			frames.push_back(frame);
 		}
 		mMP->projectOnCanvas(targetCanvas, frames);

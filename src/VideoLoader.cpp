@@ -81,8 +81,12 @@ bool VideoLoader::getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame
 
 void VideoLoader::loadCalibrationFile(char* calFileName) {	
 	FileStorage fs(calFileName, FileStorage::READ);
-	fs["cameraMatA"] >> mCalibrationMatrix["cameraMatA"];
-	fs["distCoeffs"] >> mCalibrationMatrix["distCoeffs"];
+	Mat A, D;
+	fs["cameraMatA"] >> A;
+	fs["distCoeffs"] >> D;
+
+	A.convertTo(mCalibrationMatrix["cameraMatA"], CV_32F);
+	D.convertTo(mCalibrationMatrix["distCoeffs"], CV_32F);
 }
 
 void VideoLoader::loadPTOFile(char* ptoFileName) {

@@ -1,7 +1,10 @@
 #ifndef _H_MAPPING_PROJECTOR
 #define _H_MAPPING_PROJECTOR
 
-#include <map>
+#include <iostream>
+#include <fstream>
+#include <set>
+#include <stack>
 #include <header/VideoLoader.h>
 #include <header/Params.h>
 #include <header/Usage.h>
@@ -19,31 +22,32 @@ class MappingProjector {
 			Projection Matrix:
 				Dimenstion: Width * Height * [ViewCount * (weight, X, Y) ]
 		*/
-		shared_ptr<cv::detail::SphericalWarperGpu> mSphericalWarper;
-		vector< Mat > mR;
-		
-		vector<struct MutualProjectParam> mViewParams;
-		vector< vector <Mat> > mProjMap;
-		Mat mA; // Also known as K
-		Mat mD;
 		double mFocalLength;
 		int mViewCount;
 		Size mViewSize;
 
-		int mDebugView;
+		shared_ptr<cv::detail::SphericalWarper> mSphericalWarper;
+		vector< Mat > mR;
+		
+		vector<struct MutualProjectParam> mViewParams;
+		Mat mA; // Also known as K
+		Mat mD;
+		
+		vector<UMat> mUxMaps;
+		vector<UMat> mUyMaps;
+		vector<Rect> mMapROIs;
+		vector<Mat> mMapMasks;
+		Rect mCanvasROI;
+
+		set<int> mDebugView;
 
 		void constructSphereMap();
-		void examineSphereMap();
-		Mat calcWeightForEachView(double theta, double phi);
-		double getTauAngle(double t1, double p1, double t2, double p2) ;
-		void getUVMapping(double t1, double p1, double t2, double p2, double &u, double &v);
-		bool isInsideImage( double x, double y );
 		Mat getZMatrix(double alpha);
 		Mat getYMatrix(double beta);
 		Mat getXMatrix(double gamma);
 
 	public:
-		void calcProjectionMatrix(map< string, Mat > calibrationData);
+		Size calcProjectionMatrix(map< string, Mat > calibrationData);
 		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 
 		MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength);

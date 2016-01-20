@@ -24,6 +24,8 @@ class VideoStitcher {
 		shared_ptr<ExposureProcessor> mEP;
 		shared_ptr<MappingProjector> mMP;
 
+		Size mOutputVideoSize;
+
 	public:
 		void doRealTimeStitching(int argc, char* argv[]);
 		VideoStitcher(int argc, char* argv[]);

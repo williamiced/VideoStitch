@@ -1,7 +1,7 @@
 #include <header/MappingProjector.h>
 
-void MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) {
-	calibrationData["cameraMatA"].convertTo(mA, CV_32F);
+Size MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) {
+	mA = calibrationData["cameraMatA"];
 	mD = calibrationData["distCoeffs"];
 
 	// Refresh focal length from pto file
@@ -10,27 +10,21 @@ void MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) 
 	mA.at<float>(0, 2) = static_cast<float> ( mViewSize.width/2 );
 	mA.at<float>(1, 2) = static_cast<float> ( mViewSize.height/2 );
 
-	mSphericalWarper = shared_ptr<cv::detail::SphericalWarperGpu>( new cv::detail::SphericalWarperGpu(1.f) );
+	mSphericalWarper = shared_ptr<cv::detail::SphericalWarper>( new cv::detail::SphericalWarper( mFocalLength ) );
+	logMsg(LOG_INFO, "=== Start to construct the sphere map ===");
 	constructSphereMap();
-	examineSphereMap();
+	return mCanvasROI.size();
 }
 
 void MappingProjector::constructSphereMap() {
-	// Initialize the map
-	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
-		vector<Mat> weightMatRow;
-		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
-			Mat weightMat = Mat::zeros(mViewCount, 3, CV_32S);
-			weightMatRow.push_back(weightMat);
-		}
-		mProjMap.push_back(weightMatRow);
-	}
-
 	// Calculate mR
+	logMsg(LOG_INFO, "=== Calculate projection matrix for each view ===");
 	for (int v=0; v<mViewCount; v++) {
-		if (mDebugView >= 0 && mDebugView != v)
-			continue;
 		Mat r = Mat::zeros(3, 3, CV_32F);
+		if (mDebugView.find(v) == mDebugView.end()) {
+			mR.push_back( r );
+			continue;
+		}
 		struct MutualProjectParam vP = mViewParams[v];
 		double alpha = vP.y;
 		double beta = vP.p;
@@ -45,27 +39,31 @@ void MappingProjector::constructSphereMap() {
 		mR.push_back( r );
 	}
 
-	// Calculate (x, y) -> (u, v) for each view
-	for (int y=0; y<mViewSize.height; y++) {
-		for (int x=0; x<mViewSize.width; x++) {
-			for (int v=0; v<mViewCount; v++) {
-				if (mDebugView >= 0 && mDebugView != v)
-					continue;
-				Point2f mapPnt = mSphericalWarper->warpPoint(Point2f(x, y), mA, mR[v]);
-				// mapPnt: x = (-pi ~ pi), y = (0 ~ pi)
-				int oX = static_cast<int> ( (mapPnt.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
-				int oY = static_cast<int> ( mapPnt.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
-
-				//cout << "map: (" << oX << ", " << oY << ") ... to v ( " << x << ", " << y << ")" << endl;
-
-				Mat weightMat = mProjMap[oY][oX];
-				weightMat.at<int>(v, 0) = 1;
-				weightMat.at<int>(v, 1) = x;
-				weightMat.at<int>(v, 2) = y;
-				mProjMap[oY][oX] = weightMat;
-			}
+	// Build the maps
+	logMsg(LOG_INFO, "=== Build maps for each views ===");
+	for (int v=0; v<mViewCount; v++) {
+		if (mDebugView.find(v) == mDebugView.end()) {
+			mMapROIs.push_back( Rect(0, 0, 0, 0) );
+			mUxMaps.push_back( UMat() );
+			mUyMaps.push_back( UMat() );
+			continue;
 		}
+		UMat uxmap, uymap;
+		mMapROIs.push_back( mSphericalWarper->buildMaps(mViewSize, mA, mR[v], uxmap, uymap) );
+		mUxMaps.push_back( uxmap );
+		mUyMaps.push_back( uymap );
+
+		//cout << "ROI: " << mMapROIs[v].tl() << " -> " << mMapROIs[v].br() << endl;
 	}
+
+	mCanvasROI = mMapROIs[0];
+	for (int v=1; v<mViewCount; v++)
+		mCanvasROI = mCanvasROI | mMapROIs[v];
+	mCanvasROI += Size(1, 1);
+
+	// Update ROIs
+	for (int v=0; v<mViewCount; v++) 
+		mMapROIs[v] = Rect( mMapROIs[v].x - mCanvasROI.x, mMapROIs[v].y - mCanvasROI.y, mMapROIs[v].width+1, mMapROIs[v].height+1 );
 }
 
 Mat MappingProjector::getZMatrix(double alpha) {
@@ -104,74 +102,43 @@ Mat MappingProjector::getXMatrix(double gamma) {
 	return x;
 }
 
-void MappingProjector::examineSphereMap() {
-	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
-		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
-			int totalWeight = 0;
-			for (int v=0; v<mViewCount; v++) {
-				if (mDebugView >= 0 && mDebugView != v)
-					continue;
-				if (mProjMap[y][x].at<int>(v, 0) != 0)
-					totalWeight += 1;
-			}
-
-			if (totalWeight == 0) {
-				if (x > 0)
-					mProjMap[y][x] = mProjMap[y][x-1];
-				else if (y > 0)
-					mProjMap[y][x] = mProjMap[y-1][x];
-				else {
-					cout << "Cannot handle map ("<< y << ", " << x << ")" << endl;
-				}
-			}
-
-		}
-	}
-}
-
 void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
-	/*
-	GpuMat newFrame;
-	GpuMat oriFrame(frame);
-	cv::cuda::warpAffine(oriFrame, newFrame, mProjMat[vIdx], Size(frame.cols, frame.rows));
-	*/
-	for (int y=0; y<canvas.rows; y++) {
-		for (int x=0; x<canvas.cols; x++) {
-			int totalWeight = 0;
-			Mat pixelMat = mProjMap[y][x];
-			Vec3b pixel = Vec3b(0, 0, 0);
-			// Get weight
-			for (int v=0; v<mViewCount; v++) {
-				if (mDebugView >= 0 && mDebugView != v)
-					continue;
-				if (pixelMat.at<int>(v, 0) != 0)
-					totalWeight += 1;
-			}
+	for (int v=0; v<mViewCount; v++) {
+		// Get the output frame
+		Mat outputFrame;
+		outputFrame.create(mMapROIs[v].height + 1, mMapROIs[v].width + 1, frames[v].type());
 
-			for (int v=0; v<mViewCount; v++) {
-				if (mDebugView >= 0 && mDebugView != v)
-					continue;
-				if (pixelMat.at<int>(v, 0) == 0)
-					continue;
-				int px = pixelMat.at<int>(v, 1) ;
-				int py = pixelMat.at<int>(v, 2) ;
-				pixel += (static_cast<float> (pixelMat.at<int>(v, 0)) / totalWeight) * frames[v].at<Vec3b>(py, px) ;
-			}
-			canvas.at<Vec3b>(y, x) = pixel;
+		cv::remap(frames[v], outputFrame, mUxMaps[v], mUyMaps[v], cv::INTER_LINEAR, BORDER_CONSTANT);
+		//outputFrames.push_back(outputFrame);
+
+		if ( mMapMasks.size() < (unsigned int)mViewCount ) { // Construct maps for the first frame
+			// Generate mask for map
+			Mat binaryOutputFrame;
+			cvtColor(outputFrame, binaryOutputFrame, CV_RGB2GRAY);
+			Mat mask(outputFrame.size(), CV_8U, Scalar(0));
+			vector<vector<Point> > contours;
+			vector<Vec4i> hierarchy;
+			findContours(binaryOutputFrame, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+			for (int i=0; i>=0; i = hierarchy[i][0]) 
+				drawContours(mask, contours, i, Scalar(255), CV_FILLED);
+			mMapMasks.push_back(mask);
 		}
+
+		outputFrame.copyTo(canvas( mMapROIs[v] ), mMapMasks[v]);
 	}
 }
+
 
 MappingProjector::MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength) {
 	mViewCount = viewCount;
 	mViewSize = viewSize;
 	mViewParams = params;
 	mFocalLength = focalLength;
-	mDebugView = -1;
+	mDebugView = {0, 1, 2, 3, 4, 5};
 
-	cout << "Focal Length: " << mFocalLength << endl;
+	logMsg(LOG_DEBUG, stringFormat("\tFocal Length: %lf", mFocalLength));
 	for (int v=0; v<mViewCount; v++)
-		cout << "V: Theta: " << params[v].y << ", Phi: " << params[v].p << ", Omega: " << params[v].r << endl;
+		logMsg(LOG_DEBUG, stringFormat("\t\tV%d: Yaw: %lf\t, Pitch: %lf\t, Roll: %lf", v, params[v].y, params[v].p, params[v].r));
 
 }
 
