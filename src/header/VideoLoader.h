@@ -14,6 +14,7 @@
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include "opencv2/core/core.hpp"
 #include "opencv2/opencv.hpp"
 
 using namespace std;

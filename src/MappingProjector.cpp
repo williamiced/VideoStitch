@@ -19,6 +19,20 @@ Size MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) 
 void MappingProjector::constructSphereMap() {
 	// Calculate mR
 	logMsg(LOG_INFO, "=== Calculate projection matrix for each view ===");
+	calcRotationMatrix();
+	
+	// Build the maps
+	logMsg(LOG_INFO, "=== Build maps for each views ===");
+	findingMappingAndROI();
+
+	// Construct masks
+	constructMasks();
+
+	// Construct alpha channels
+	constructAlphaChannel();
+}
+
+void MappingProjector::calcRotationMatrix() {
 	for (int v=0; v<mViewCount; v++) {
 		Mat r = Mat::zeros(3, 3, CV_32F);
 		if (mDebugView.find(v) == mDebugView.end()) {
@@ -38,24 +52,23 @@ void MappingProjector::constructSphereMap() {
 		r = Ry * Rx * Rz;
 		mR.push_back( r );
 	}
+}
 
-	// Build the maps
-	logMsg(LOG_INFO, "=== Build maps for each views ===");
+void MappingProjector::findingMappingAndROI() {
 	for (int v=0; v<mViewCount; v++) {
 		if (mDebugView.find(v) == mDebugView.end()) {
 			mMapROIs.push_back( Rect(0, 0, 0, 0) );
-			mUxMaps.push_back( UMat() );
-			mUyMaps.push_back( UMat() );
+			mUxMaps.push_back( Mat() );
+			mUyMaps.push_back( Mat() );
 			continue;
 		}
-		UMat uxmap, uymap;
+		Mat uxmap, uymap;
 		mMapROIs.push_back( mSphericalWarper->buildMaps(mViewSize, mA, mR[v], uxmap, uymap) );
 		mUxMaps.push_back( uxmap );
 		mUyMaps.push_back( uymap );
-
-		//cout << "ROI: " << mMapROIs[v].tl() << " -> " << mMapROIs[v].br() << endl;
 	}
 
+	// Calculate canvas ROI
 	mCanvasROI = mMapROIs[0];
 	for (int v=1; v<mViewCount; v++)
 		mCanvasROI = mCanvasROI | mMapROIs[v];
@@ -64,6 +77,38 @@ void MappingProjector::constructSphereMap() {
 	// Update ROIs
 	for (int v=0; v<mViewCount; v++) 
 		mMapROIs[v] = Rect( mMapROIs[v].x - mCanvasROI.x, mMapROIs[v].y - mCanvasROI.y, mMapROIs[v].width+1, mMapROIs[v].height+1 );
+}
+
+void MappingProjector::constructMasks() {
+	Mat sampleMat(mViewSize, CV_8U, Scalar(255));
+	
+	for (int v=0; v<mViewCount; v++) {
+		// Construct whole Mat
+		Mat maskFullView = Mat::zeros(mMapROIs[v].height + 1, mMapROIs[v].width + 1, CV_8U);
+		cv::remap(sampleMat, maskFullView, mUxMaps[v], mUyMaps[v], cv::INTER_LINEAR, BORDER_CONSTANT);
+		mMapMasks.push_back(maskFullView);
+	}
+}
+
+void MappingProjector::constructAlphaChannel() {
+	mAlphaChannel = Mat(mCanvasROI.size(), CV_8U, Scalar(0));
+	for (int v=0; v<mViewCount; v++) {
+		Mat viewRange = mAlphaChannel( mMapROIs[v] );
+		viewRange += (mMapMasks[v] / 255);
+	}
+	//cout << mAlphaChannel << endl;
+	for (int v=0; v<mViewCount; v++) {
+		Mat viewAlpha;
+		Mat viewRange;
+		mAlphaChannel( mMapROIs[v] ).convertTo(viewRange, CV_32FC1);
+		mMapMasks[v].convertTo(viewAlpha, CV_32FC1, 1/255.0f);
+
+		Mat result;
+		divide(viewAlpha, viewRange, result);
+		result.convertTo(result, CV_32FC1);
+		mViewAlpha.push_back(result);
+		//imwrite(stringFormat("tmp_%d.png", v), result);
+	}
 }
 
 Mat MappingProjector::getZMatrix(double alpha) {
@@ -106,26 +151,25 @@ void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
 	for (int v=0; v<mViewCount; v++) {
 		// Get the output frame
 		Mat outputFrame;
-		outputFrame.create(mMapROIs[v].height + 1, mMapROIs[v].width + 1, frames[v].type());
+		outputFrame.create(mMapROIs[v].height + 1, mMapROIs[v].width + 1, CV_8UC3);
 
 		cv::remap(frames[v], outputFrame, mUxMaps[v], mUyMaps[v], cv::INTER_LINEAR, BORDER_CONSTANT);
-		//outputFrames.push_back(outputFrame);
-
-		if ( mMapMasks.size() < (unsigned int)mViewCount ) { // Construct maps for the first frame
-			// Generate mask for map
-			Mat binaryOutputFrame;
-			cvtColor(outputFrame, binaryOutputFrame, CV_RGB2GRAY);
-			Mat mask(outputFrame.size(), CV_8U, Scalar(0));
-			vector<vector<Point> > contours;
-			vector<Vec4i> hierarchy;
-			findContours(binaryOutputFrame, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
-			for (int i=0; i>=0; i = hierarchy[i][0]) 
-				drawContours(mask, contours, i, Scalar(255), CV_FILLED);
-			mMapMasks.push_back(mask);
-		}
-
-		outputFrame.copyTo(canvas( mMapROIs[v] ), mMapMasks[v]);
+		mixWithAlphaChannel(outputFrame, v);
+		imwrite("tmpView.png", outputFrame);
+		add(outputFrame, canvas( mMapROIs[v] ), canvas( mMapROIs[v] ), mMapMasks[v]);
 	}
+	imwrite("tmpCanvas.png", canvas);
+}
+
+void MappingProjector::mixWithAlphaChannel(Mat& img, int v) {
+	vector<Mat> channels;
+	split(img, channels);
+	for (unsigned int i=0; i<channels.size(); i++) {
+		channels[i].convertTo(channels[i], CV_32FC1);
+		channels[i] = channels[i].mul(mViewAlpha[v]);
+		channels[i].convertTo(channels[i], CV_8UC1);
+	}
+	merge(channels, img);
 }
 
 

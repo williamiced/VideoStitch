@@ -8,7 +8,10 @@
 #include <memory>    // For std::unique_ptr
 #include <boost/assign/list_of.hpp>
 #include <boost/unordered_map.hpp>
+#include "opencv2/opencv.hpp"
+#include "opencv2/core/core.hpp"
 
+using namespace cv;
 using namespace std;
 using boost::assign::map_list_of;
 
@@ -19,6 +22,11 @@ enum returnValEnum {
 enum logTypeEnum {
 	LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_DEBUG
 };
+
+typedef struct RenderArea {
+	Rect roi; // ROI
+	Mat mask; // mask
+} RenderArea;
 
 struct MutualProjectParam {
 	double r;

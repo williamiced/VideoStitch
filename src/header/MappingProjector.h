@@ -33,15 +33,23 @@ class MappingProjector {
 		Mat mA; // Also known as K
 		Mat mD;
 		
-		vector<UMat> mUxMaps;
-		vector<UMat> mUyMaps;
+		vector<Mat> mUxMaps;
+		vector<Mat> mUyMaps;
 		vector<Rect> mMapROIs;
+		vector< vector<RenderArea> > mRenderAreas;
 		vector<Mat> mMapMasks;
 		Rect mCanvasROI;
+		Mat mAlphaChannel;
+		vector<Mat> mViewAlpha;
 
 		set<int> mDebugView;
 
 		void constructSphereMap();
+		void calcRotationMatrix();
+		void findingMappingAndROI();
+		void constructMasks();
+		void constructAlphaChannel();
+		void mixWithAlphaChannel(Mat& img, int v);
 		Mat getZMatrix(double alpha);
 		Mat getYMatrix(double beta);
 		Mat getXMatrix(double gamma);
