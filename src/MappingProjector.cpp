@@ -150,26 +150,21 @@ Mat MappingProjector::getXMatrix(double gamma) {
 void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
 	for (int v=0; v<mViewCount; v++) {
 		// Get the output frame
-		Mat outputFrame;
-		outputFrame.create(mMapROIs[v].height + 1, mMapROIs[v].width + 1, CV_8UC3);
-
+		Mat outputFrame(mMapROIs[v].height + 1, mMapROIs[v].width + 1, CV_8UC3);
 		cv::remap(frames[v], outputFrame, mUxMaps[v], mUyMaps[v], cv::INTER_LINEAR, BORDER_CONSTANT);
 		mixWithAlphaChannel(outputFrame, v);
-		imwrite("tmpView.png", outputFrame);
-		add(outputFrame, canvas( mMapROIs[v] ), canvas( mMapROIs[v] ), mMapMasks[v]);
+		add(canvas( mMapROIs[v] ), outputFrame, canvas( mMapROIs[v] ), mMapMasks[v]);
 	}
-	imwrite("tmpCanvas.png", canvas);
 }
 
 void MappingProjector::mixWithAlphaChannel(Mat& img, int v) {
-	vector<Mat> channels;
-	split(img, channels);
-	for (unsigned int i=0; i<channels.size(); i++) {
-		channels[i].convertTo(channels[i], CV_32FC1);
-		channels[i] = channels[i].mul(mViewAlpha[v]);
-		channels[i].convertTo(channels[i], CV_8UC1);
+	for (int y=0; y<img.rows; y++) {
+		for (int x=0; x<img.cols; x++) {
+			Vec3b data = img.at<Vec3b>(y, x);
+			data *= mViewAlpha[v].at<float>(y, x);
+			img.at<Vec3b>(y, x) = data;
+		}
 	}
-	merge(channels, img);
 }
 
 

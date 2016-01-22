@@ -94,7 +94,6 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		//Mat canvas;
 		//targetCanvas.download(canvas);	
 		(*outputVideo) << targetCanvas;
-		targetCanvas.release();
 		
 	}
 	logMsg(LOG_INFO, "=== Done stitching ===");
