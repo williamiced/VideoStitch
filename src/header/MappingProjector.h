@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include <iterator>
 #include <set>
 #include <stack>
 #include <header/VideoLoader.h>
@@ -12,6 +14,7 @@
 #include "opencv2/core/cuda.hpp"
 #include "opencv2/cudawarping.hpp"
 #include "opencv2/stitching/warpers.hpp"
+#include "opencv2/stitching/detail/exposure_compensate.hpp"
 
 using namespace std;
 using namespace cv::cuda;
@@ -22,6 +25,7 @@ class MappingProjector {
 			Projection Matrix:
 				Dimenstion: Width * Height * [ViewCount * (weight, X, Y) ]
 		*/
+		cv::Ptr<cv::detail::ExposureCompensator> mEC;
 		double mFocalLength;
 		int mViewCount;
 		Size mViewSize;

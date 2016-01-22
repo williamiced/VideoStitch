@@ -4,6 +4,12 @@ Size MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) 
 	mA = calibrationData["cameraMatA"];
 	mD = calibrationData["distCoeffs"];
 
+#ifdef USE_SMALLER_CANVAS
+	logMsg(LOG_INFO, "=== Shrink canvas to half ===");
+	mViewSize /= USE_SMALLER_CANVAS;
+	mFocalLength /= static_cast<float>( USE_SMALLER_CANVAS );
+#endif
+
 	// Refresh focal length from pto file
 	mA.at<float>(0, 0) = static_cast<float> ( mFocalLength );
 	mA.at<float>(1, 1) = static_cast<float> ( mFocalLength );
@@ -148,13 +154,38 @@ Mat MappingProjector::getXMatrix(double gamma) {
 }
 
 void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
+	vector<Mat> warpedImg(mViewCount);
+#ifdef USE_SMALLER_CANVAS
+	canvas = Mat::zeros(mCanvasROI.size(), CV_8UC3);
+#endif
 	for (int v=0; v<mViewCount; v++) {
+#ifdef USE_SMALLER_CANVAS
+		cv::resize(frames[v], frames[v], mViewSize);
+#endif
 		// Get the output frame
 		Mat outputFrame(mMapROIs[v].height + 1, mMapROIs[v].width + 1, CV_8UC3);
 		cv::remap(frames[v], outputFrame, mUxMaps[v], mUyMaps[v], cv::INTER_LINEAR, BORDER_CONSTANT);
-		mixWithAlphaChannel(outputFrame, v);
-		add(canvas( mMapROIs[v] ), outputFrame, canvas( mMapROIs[v] ), mMapMasks[v]);
+		warpedImg[v] = outputFrame;
 	}
+
+	// Exposure compensate
+	if (mEC == nullptr) {
+		mEC = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
+		vector<UMat> imgs, masks;
+		vector<Point> corners;
+		for (int v=0; v<mViewCount; v++) {
+			corners.push_back(mMapROIs[v].tl());
+			imgs.push_back(warpedImg[v].getUMat(ACCESS_RW));
+			masks.push_back(mMapMasks[v].getUMat(ACCESS_RW));
+		}
+		mEC->feed(corners, imgs, masks);
+	}
+	for (int v=0; v<mViewCount; v++) {
+		mEC->apply(v, mMapROIs[v].tl(), warpedImg[v], mMapMasks[v]);
+		mixWithAlphaChannel(warpedImg[v], v);
+		add(canvas( mMapROIs[v] ), warpedImg[v], canvas( mMapROIs[v] ), mMapMasks[v]);
+	}
+
 }
 
 void MappingProjector::mixWithAlphaChannel(Mat& img, int v) {
@@ -178,7 +209,6 @@ MappingProjector::MappingProjector(int viewCount, Size viewSize, vector<struct M
 	logMsg(LOG_DEBUG, stringFormat("\tFocal Length: %lf", mFocalLength));
 	for (int v=0; v<mViewCount; v++)
 		logMsg(LOG_DEBUG, stringFormat("\t\tV%d: Yaw: %lf\t, Pitch: %lf\t, Roll: %lf", v, params[v].y, params[v].p, params[v].r));
-
 }
 
 MappingProjector::~MappingProjector() {
