@@ -16,7 +16,7 @@ Size MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) 
 	mA.at<float>(0, 2) = static_cast<float> ( mViewSize.width/2 );
 	mA.at<float>(1, 2) = static_cast<float> ( mViewSize.height/2 );
 
-	mSphericalWarper = shared_ptr<cv::detail::SphericalWarper>( new cv::detail::SphericalWarper( mFocalLength ) );
+	mSphericalWarper = shared_ptr<PROJECT_METHOD>( new PROJECT_METHOD( mFocalLength ) );
 	logMsg(LOG_INFO, "=== Start to construct the sphere map ===");
 	constructSphereMap();
 	return mCanvasROI.size();
@@ -32,19 +32,19 @@ void MappingProjector::constructSphereMap() {
 	findingMappingAndROI();
 
 	// Construct masks
+	logMsg(LOG_INFO, "=== Build maps masks ===");
 	constructMasks();
 
+#ifndef USE_BLENDER
 	// Construct alpha channels
+	logMsg(LOG_INFO, "=== Construct alpha channels ===");
 	constructAlphaChannel();
+#endif
 }
 
 void MappingProjector::calcRotationMatrix() {
 	for (int v=0; v<mViewCount; v++) {
 		Mat r = Mat::zeros(3, 3, CV_32F);
-		if (mDebugView.find(v) == mDebugView.end()) {
-			mR.push_back( r );
-			continue;
-		}
 		struct MutualProjectParam vP = mViewParams[v];
 		double alpha = vP.y;
 		double beta = vP.p;
@@ -62,27 +62,39 @@ void MappingProjector::calcRotationMatrix() {
 
 void MappingProjector::findingMappingAndROI() {
 	for (int v=0; v<mViewCount; v++) {
-		if (mDebugView.find(v) == mDebugView.end()) {
-			mMapROIs.push_back( Rect(0, 0, 0, 0) );
-			mUxMaps.push_back( Mat() );
-			mUyMaps.push_back( Mat() );
-			continue;
-		}
 		Mat uxmap, uymap;
 		mMapROIs.push_back( mSphericalWarper->buildMaps(mViewSize, mA, mR[v], uxmap, uymap) );
 		mUxMaps.push_back( uxmap );
 		mUyMaps.push_back( uymap );
 	}
+	updateCurrentCanvasROI();
 
+	// Update ROIs
+	if (mCanvasROI.size().width < mCanvasROI.size().height * 2) {
+		int yOffset = mCanvasROI.size().width / 4;
+		for (int v=0; v<mViewCount; v++) {
+			Point tl = Point(mMapROIs[v].tl().x, mMapROIs[v].tl().y < -yOffset ? -yOffset : mMapROIs[v].tl().y);
+			Point br = Point(mMapROIs[v].br().x, mMapROIs[v].br().y > yOffset ? yOffset : mMapROIs[v].br().y );
+			mUxMaps[v] = mUxMaps[v].rowRange( tl.y - mMapROIs[v].tl().y, br.y - mMapROIs[v].tl().y + 1);
+			mUyMaps[v] = mUyMaps[v].rowRange( tl.y - mMapROIs[v].tl().y, br.y - mMapROIs[v].tl().y + 1);
+			mMapROIs[v] = Rect(tl, br);
+		}
+
+		updateCurrentCanvasROI();
+	}
+
+	for (int v=0; v<mViewCount; v++) {
+		mMapROIs[v] = Rect( mMapROIs[v].x - mCanvasROI.x, mMapROIs[v].y - mCanvasROI.y, mMapROIs[v].width+1, mMapROIs[v].height+1 );
+		mCorners.push_back( mMapROIs[v].tl() );
+	}
+}
+
+void MappingProjector::updateCurrentCanvasROI() {
 	// Calculate canvas ROI
 	mCanvasROI = mMapROIs[0];
 	for (int v=1; v<mViewCount; v++)
 		mCanvasROI = mCanvasROI | mMapROIs[v];
 	mCanvasROI += Size(1, 1);
-
-	// Update ROIs
-	for (int v=0; v<mViewCount; v++) 
-		mMapROIs[v] = Rect( mMapROIs[v].x - mCanvasROI.x, mMapROIs[v].y - mCanvasROI.y, mMapROIs[v].width+1, mMapROIs[v].height+1 );
 }
 
 void MappingProjector::constructMasks() {
@@ -113,7 +125,6 @@ void MappingProjector::constructAlphaChannel() {
 		divide(viewAlpha, viewRange, result);
 		result.convertTo(result, CV_32FC1);
 		mViewAlpha.push_back(result);
-		//imwrite(stringFormat("tmp_%d.png", v), result);
 	}
 }
 
@@ -154,6 +165,8 @@ Mat MappingProjector::getXMatrix(double gamma) {
 }
 
 void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
+	boost::timer::cpu_timer boostTimer;
+
 	vector<Mat> warpedImg(mViewCount);
 #ifdef USE_SMALLER_CANVAS
 	canvas = Mat::zeros(mCanvasROI.size(), CV_8UC3);
@@ -168,24 +181,41 @@ void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
 		warpedImg[v] = outputFrame;
 	}
 
-	// Exposure compensate
-	if (mEC == nullptr) {
-		mEC = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
-		vector<UMat> imgs, masks;
-		vector<Point> corners;
-		for (int v=0; v<mViewCount; v++) {
-			corners.push_back(mMapROIs[v].tl());
-			imgs.push_back(warpedImg[v].getUMat(ACCESS_RW));
-			masks.push_back(mMapMasks[v].getUMat(ACCESS_RW));
-		}
-		mEC->feed(corners, imgs, masks);
-	}
-	for (int v=0; v<mViewCount; v++) {
-		mEC->apply(v, mMapROIs[v].tl(), warpedImg[v], mMapMasks[v]);
-		mixWithAlphaChannel(warpedImg[v], v);
-		add(canvas( mMapROIs[v] ), warpedImg[v], canvas( mMapROIs[v] ), mMapMasks[v]);
-	}
+#ifdef USE_EXPOSURE_COMPENSATOR
+	if (mEP == nullptr)
+		mEP = shared_ptr<ExposureProcessor>( new ExposureProcessor( mCorners, mMapMasks, mViewCount ) );
+	if (mFrameProcessed == 0)
+		mEP->feedExposures(warpedImg);
+	mEP->doExposureCompensate(warpedImg);
+#endif
 
+	Mat result, resultMask;
+#ifdef USE_BLENDER
+	if (mBP == nullptr) {
+		vector<Size> sizes(mViewCount);
+		for (int v=0; v<mViewCount; v++)
+			sizes[v] = mMapROIs[v].size();
+		mBP = shared_ptr<BlendingProcessor>( new BlendingProcessor( mViewCount, mCanvasROI, mCorners, sizes, mMapMasks ) );
+	}
+	mBP->doBlending( warpedImg, result, resultMask );
+	canvas = result;
+#else
+	for (int v=0; v<mViewCount; v++) {
+		mixWithAlphaChannel(warpedImg[v], v);
+		add( canvas( mMapROIs[v] ), warpedImg[v], canvas( mMapROIs[v] ), mMapMasks[v]);	
+	}
+#endif
+
+	boostTimer.stop();
+	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
+    mFrameProcessed++;
+}
+
+void MappingProjector::checkFPS() {
+	double total = 0.f;
+	for (unsigned int i=0; i<mExecTimes.size(); i++) 
+		total += mExecTimes[i];
+	logMsg(LOG_INFO, stringFormat( "=== Average FPS is %lf === ", mExecTimes.size() / total ) );
 }
 
 void MappingProjector::mixWithAlphaChannel(Mat& img, int v) {
@@ -198,13 +228,11 @@ void MappingProjector::mixWithAlphaChannel(Mat& img, int v) {
 	}
 }
 
-
-MappingProjector::MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength) {
+MappingProjector::MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength) : mFrameProcessed(0) {
 	mViewCount = viewCount;
 	mViewSize = viewSize;
 	mViewParams = params;
 	mFocalLength = focalLength;
-	mDebugView = {0, 1, 2, 3, 4, 5};
 
 	logMsg(LOG_DEBUG, stringFormat("\tFocal Length: %lf", mFocalLength));
 	for (int v=0; v<mViewCount; v++)

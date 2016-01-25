@@ -1,4 +1,8 @@
 //#define USE_LENS_UNDISTORT
+#define PROJECT_METHOD cv::detail::MercatorWarper
+
+#define USE_EXPOSURE_COMPENSATOR
+#define USE_BLENDER
 #define USE_SMALLER_CANVAS 4
 
 #define OUTPUT_PANO_WIDTH 2062

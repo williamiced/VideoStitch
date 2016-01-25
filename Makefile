@@ -9,7 +9,7 @@ BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
 
 # For OpenCV support
 CFLAGS+=`pkg-config --cflags opencv`
-LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64
+LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64 -lboost_system -lboost_timer
 
 # Paths
 SRC=src
@@ -50,7 +50,7 @@ CameraCalibrator:
 	$(CC) -o $(BIN)/$@ tools/calibration/CameraCalibrator.cpp $(LDFLAGS)
 
 run:
-	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 10 --output StitchResult.avi
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml

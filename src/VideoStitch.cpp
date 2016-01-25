@@ -39,9 +39,6 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData(), mVL->getVideoSize(), mVL->getFocalLength()) );
 #endif
 
-	logMsg(LOG_INFO, "=== Initialize ExposureProcessor ===");
-	mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor());
-
 	logMsg(LOG_INFO, "=== Initialize Video Stablizer ===");
 	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
 
@@ -50,12 +47,6 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 
 	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
 	mOutputVideoSize = mMP->calcProjectionMatrix( mVL->getCalibrationData() );
-
-	/*
-	Mat image = imread("data/testImg.JPG", CV_LOAD_IMAGE_COLOR);
-	mLP->undistort(image);
-	imwrite("data/undistort.JPG", image);
-	*/
 }
 
 void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
@@ -88,7 +79,6 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			frames.push_back(frame);
 		}
 		mMP->projectOnCanvas(targetCanvas, frames);
-		//mEP->exposureBlending(targetCanvas);
 		//mVS->stablize(targetCanvas);
 		
 		//Mat canvas;
@@ -96,6 +86,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		(*outputVideo) << targetCanvas;
 		
 	}
+	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
 }
 

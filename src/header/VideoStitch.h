@@ -7,7 +7,6 @@
 #include <header/VideoLoader.h>
 #include <header/LensProcessor.h>
 #include <header/VideoStablizer.h>
-#include <header/ExposureProcessor.h>
 #include <header/MappingProjector.h>
 #include <header/Usage.h>
 
@@ -21,7 +20,6 @@ class VideoStitcher {
 		shared_ptr<VideoLoader> mVL;
 		shared_ptr<LensProcessor> mLP;
 		shared_ptr<VideoStablizer> mVS;
-		shared_ptr<ExposureProcessor> mEP;
 		shared_ptr<MappingProjector> mMP;
 
 		Size mOutputVideoSize;

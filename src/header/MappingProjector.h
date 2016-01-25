@@ -7,6 +7,9 @@
 #include <iterator>
 #include <set>
 #include <stack>
+#include <boost/timer/timer.hpp>
+#include <header/ExposureProcessor.h>
+#include <header/BlendingProcessor.h>
 #include <header/VideoLoader.h>
 #include <header/Params.h>
 #include <header/Usage.h>
@@ -14,23 +17,25 @@
 #include "opencv2/core/cuda.hpp"
 #include "opencv2/cudawarping.hpp"
 #include "opencv2/stitching/warpers.hpp"
-#include "opencv2/stitching/detail/exposure_compensate.hpp"
 
 using namespace std;
 using namespace cv::cuda;
 
 class MappingProjector {
 	private:
-		/** 
-			Projection Matrix:
-				Dimenstion: Width * Height * [ViewCount * (weight, X, Y) ]
-		*/
-		cv::Ptr<cv::detail::ExposureCompensator> mEC;
+		vector<double> mExecTimes;
+		unsigned int mFrameProcessed;
+		unsigned int mLastFrameIdx;
+		char* mLastFrameTime;
+
+		shared_ptr<ExposureProcessor> mEP;
+		shared_ptr<BlendingProcessor> mBP;
+		cv::Ptr<cv::detail::Blender> mBlender;
 		double mFocalLength;
 		int mViewCount;
 		Size mViewSize;
 
-		shared_ptr<cv::detail::SphericalWarper> mSphericalWarper;
+		shared_ptr<PROJECT_METHOD> mSphericalWarper;
 		vector< Mat > mR;
 		
 		vector<struct MutualProjectParam> mViewParams;
@@ -40,13 +45,12 @@ class MappingProjector {
 		vector<Mat> mUxMaps;
 		vector<Mat> mUyMaps;
 		vector<Rect> mMapROIs;
+		vector<Point> mCorners;
 		vector< vector<RenderArea> > mRenderAreas;
 		vector<Mat> mMapMasks;
 		Rect mCanvasROI;
 		Mat mAlphaChannel;
 		vector<Mat> mViewAlpha;
-
-		set<int> mDebugView;
 
 		void constructSphereMap();
 		void calcRotationMatrix();
@@ -54,11 +58,13 @@ class MappingProjector {
 		void constructMasks();
 		void constructAlphaChannel();
 		void mixWithAlphaChannel(Mat& img, int v);
+		void updateCurrentCanvasROI();
 		Mat getZMatrix(double alpha);
 		Mat getYMatrix(double beta);
 		Mat getXMatrix(double gamma);
 
 	public:
+		void checkFPS();
 		Size calcProjectionMatrix(map< string, Mat > calibrationData);
 		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 
