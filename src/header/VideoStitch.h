@@ -7,6 +7,7 @@
 #include <header/VideoLoader.h>
 #include <header/LensProcessor.h>
 #include <header/VideoStablizer.h>
+#include <header/AlignProcessor.h>
 #include <header/MappingProjector.h>
 #include <header/Usage.h>
 
@@ -19,6 +20,7 @@ class VideoStitcher {
 	private:
 		shared_ptr<VideoLoader> mVL;
 		shared_ptr<LensProcessor> mLP;
+		shared_ptr<AlignProcessor> mAP;
 		shared_ptr<VideoStablizer> mVS;
 		shared_ptr<MappingProjector> mMP;
 

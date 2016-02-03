@@ -22,7 +22,7 @@ class LensProcessor {
 
 	public:
 		void undistort(Mat& frame);
-		LensProcessor(map<string, Mat> calibrationData, cv::Size videoSize, double focalLength);
+		LensProcessor(vector<Mat> Ks, vector<Mat> Ds, cv::Size videoSize, double focalLength);
 		~LensProcessor();
 };
 

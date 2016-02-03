@@ -29,15 +29,9 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	*/
 	logMsg(LOG_INFO, "=== Do preprocess ===");
 	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input") ) );
-	mVL->loadCalibrationFile( getCmdOption(argv, argv + argc, "--calibration") );
 	mVL->loadPTOFile( getCmdOption(argv, argv + argc, "--pto") );
 	mVL->preloadVideoForDuration( stoi( getCmdOption(argv, argv + argc, "--duration")) );
 	logMsg(LOG_INFO, "=== Data loaded complete ===");
-
-#ifdef USE_LENS_UNDISTORT	
-	logMsg(LOG_INFO, "=== Initialize Lens Processor ===");
-	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData(), mVL->getVideoSize(), mVL->getFocalLength()) );
-#endif
 
 	logMsg(LOG_INFO, "=== Initialize Video Stablizer ===");
 	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
@@ -45,8 +39,33 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Initialize Mapping Projector ===");
 	mMP = shared_ptr<MappingProjector>( new MappingProjector(mVL->getVideoCount(), mVL->getVideoSize(), mVL->getPTOData(), mVL->getFocalLength()));
 
+#ifdef USE_ALIGN_PROCESSOR
+	logMsg(LOG_INFO, "=== Initialize Align Processor ===");
+	int seqCount = mVL->getVideoCount();
+	mAP = shared_ptr<AlignProcessor>( new AlignProcessor( seqCount ) );
+	for (int v=0; v<seqCount; v++) {
+		Mat frame;
+		mVL->getFrameInSeq(0, v, frame);
+		mAP->feed( v, frame );
+	}
+	mAP->doAlign();
+	mMP->setCameraParams ( mAP->getRotationMat(), mAP->getIntrinsicMat(), vector<Mat>() );
+#endif
+	
+#ifdef USE_EXTERNAL_CALIBRATION_FILE
+	logMsg(LOG_INFO, "=== Load camera parameters from external file ===");
+	//mVL->loadCalibrationFile( getCmdOption(argv, argv + argc, "--calibration") );
+	mVL->loadCalibrationFileFromToolBox( getCmdOption(argv, argv + argc, "--calibration") );
+	mMP->setCameraParams ( mVL->getCalibrationData("R"), mVL->getCalibrationData("K"), mVL->getCalibrationData("D") );
+#endif
+
+#ifdef USE_LENS_UNDISTORT	
+	logMsg(LOG_INFO, "=== Initialize Lens Processor ===");
+	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData("K"), mVL->getCalibrationData("D"), mVL->getVideoSize(), mVL->getFocalLength()) );
+#endif
+
 	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
-	mOutputVideoSize = mMP->calcProjectionMatrix( mVL->getCalibrationData() );
+	mOutputVideoSize = mMP->calcProjectionMatrix( );
 }
 
 void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
@@ -61,7 +80,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	*/
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 	double videoFPS = mVL->getVideoFPS();
-	
+
+	logMsg(LOG_INFO, stringFormat("Canvas size: [%d X %d]", mOutputVideoSize.width, mOutputVideoSize.height) );
 	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, mOutputVideoSize );
 
 	int seqCount = mVL->getVideoCount();

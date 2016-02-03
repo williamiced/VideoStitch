@@ -49,8 +49,15 @@ Size VideoLoader::getVideoSize() {
 	return mVideoSize;
 }
 
-map<string, Mat> VideoLoader::getCalibrationData() {
-	return mCalibrationMatrix;
+vector<Mat> VideoLoader::getCalibrationData(string id) {
+	if (id.compare("R") == 0)
+		return ToolBoxParser::mR;
+	else if (id.compare("K") == 0)
+		return ToolBoxParser::mK;
+	else if (id.compare("D") == 0)
+		return ToolBoxParser::mD;
+	else
+		return vector<Mat>();
 }
 
 vector<struct MutualProjectParam> VideoLoader::getPTOData() {
@@ -87,6 +94,10 @@ void VideoLoader::loadCalibrationFile(char* calFileName) {
 
 	A.convertTo(mCalibrationMatrix["cameraMatA"], CV_32F);
 	D.convertTo(mCalibrationMatrix["distCoeffs"], CV_32F);
+}
+
+void VideoLoader::loadCalibrationFileFromToolBox(char* calFileName) {
+	ToolBoxParser::parseToolBoxFile(calFileName);
 }
 
 void VideoLoader::loadPTOFile(char* ptoFileName) {
@@ -151,7 +162,6 @@ void VideoLoader::calcFocalLengthInPixel(double crop, double hfov) {
     mFocalLength = (sensorSizeX / 2.0f) / tan( hfov / 180.0f * M_PI / 2);
     // If it is equirectangular
     // mFocalLength = (sensorSizeX / (hfov / 180.f * M_PI));
-
     mFocalLength = (mFocalLength / sensorSizeX) * mVideoSize.width;
 }
 

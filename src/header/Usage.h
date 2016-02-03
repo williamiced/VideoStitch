@@ -42,7 +42,7 @@ const boost::unordered_map<returnValEnum, const char*> returnValToString = map_l
     (E_BAD_ARGUMENTS, "Bad arguments. Please check the usage.")
     (E_FILE_NOT_EXISTS, "Files or directories cannot be found.")
     (E_TOO_FEW_VIDEOS, "Loaded videos are too few to stitch.");
-
+    
 void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);
 string stringFormat(const string fmt_str, ...); 

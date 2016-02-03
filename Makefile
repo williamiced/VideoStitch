@@ -27,7 +27,9 @@ OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
 cccyan=$(shell echo "\033[0;36m")
 ccend=$(shell echo "\033[0m")
 
-all: VideoStitch CameraCalibrator
+all: VideoStitch
+
+tools: VideoStitch CameraCalibrator ImagesDumper
 
 BUILD_PRINT = \e[1;34mBuilding $<\e[0m
 
@@ -49,11 +51,19 @@ CameraCalibrator:
 	@echo "$(cccyan)[Ganerate camera calibrator]$(ccend)"
 	$(CC) -o $(BIN)/$@ tools/calibration/CameraCalibrator.cpp $(LDFLAGS)
 
+ImagesDumper:
+	@echo "$(cccyan)[Ganerate images dumper]$(ccend)"
+	$(CC) obj/Usage.o -o $(BIN)/$@ tools/imagesDumper/ImagesDumper.cpp $(LDFLAGS)
+
 run:
-	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
+	$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 500 --output StitchResult.avi
+	#$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 200 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml
+
+dumper:
+	$(BIN)/ImagesDumper data/MultiCalibration/inputVideo.txt 0 1 1 data/MultiCalibration/dump
 
 clean:
 	-rm -r $(BIN)/VideoStitch

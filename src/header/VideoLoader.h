@@ -11,6 +11,7 @@
 #include <map>
 
 #include <header/Usage.h>
+#include <header/ToolBoxParser.h>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -39,9 +40,10 @@ class VideoLoader {
 		double getVideoFPS();
 		int getVideoCount();
 		Size getVideoSize();
-		map< string, Mat > getCalibrationData();
+		vector<Mat> getCalibrationData(string id);
 		vector<struct MutualProjectParam> getPTOData();
 		void loadCalibrationFile(char* calFileName);
+		void loadCalibrationFileFromToolBox(char* calFileName);
 		void loadPTOFile(char* calFileName);
 		void preloadVideoForDuration(int duration);
 

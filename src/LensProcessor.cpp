@@ -7,9 +7,10 @@ void LensProcessor::undistort(Mat& frame) {
 	tmpFrame.download(frame);
 }
 
-LensProcessor::LensProcessor(map<string, Mat> calibrationData, Size videoSize, double focalLength) {
-	mA = calibrationData["cameraMatA"];
-	mD = calibrationData["distCoeffs"];
+LensProcessor::LensProcessor(vector<Mat> Ks, vector<Mat> Ds, Size videoSize, double focalLength) {
+	// TODO: Use different [K, D] for different cameras
+	mA = Ks[0];
+	mD = Ds[0];
 
 	// Refresh focal length from pto file
 	mA.at<float>(0, 0) = static_cast<float> ( focalLength );

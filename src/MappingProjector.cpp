@@ -1,32 +1,53 @@
 #include <header/MappingProjector.h>
 
-Size MappingProjector::calcProjectionMatrix(map< string, Mat > calibrationData) {
-	mA = calibrationData["cameraMatA"];
-	mD = calibrationData["distCoeffs"];
+Size MappingProjector::calcProjectionMatrix() {
 
 #ifdef USE_SMALLER_CANVAS
 	logMsg(LOG_INFO, "=== Shrink canvas to half ===");
 	mViewSize /= USE_SMALLER_CANVAS;
-	mFocalLength /= static_cast<float>( USE_SMALLER_CANVAS );
+	logMsg(LOG_DEBUG, stringFormat("\tNew Focal Length: %lf", mFocalLength));
 #endif
+	// Calculate mR
+	if (mR.size() == 0) {
+		logMsg(LOG_INFO, "=== Calculate rotation matrix for each view ===");
+		calcRotationMatrix();
+	} else {
+		logMsg(LOG_INFO, "=== Recalculate the rotation matrix ===");
+		//recalcRotationMatrix();
+	}
 
-	// Refresh focal length from pto file
-	mA.at<float>(0, 0) = static_cast<float> ( mFocalLength );
-	mA.at<float>(1, 1) = static_cast<float> ( mFocalLength );
-	mA.at<float>(0, 2) = static_cast<float> ( mViewSize.width/2 );
-	mA.at<float>(1, 2) = static_cast<float> ( mViewSize.height/2 );
+	/*
+	for (auto r: mR) {
+		cout << r << endl;	
+		reverseRotationMatrix(r);
+	}
+	*/
 
-	mSphericalWarper = shared_ptr<PROJECT_METHOD>( new PROJECT_METHOD( mFocalLength ) );
+	// Calculate mK
+	if (mK.size() == 0) {
+		logMsg(LOG_INFO, "=== Calculate intrinsic matrix for each view ===");
+		mFocalLength /= static_cast<float>( USE_SMALLER_CANVAS );
+		calcIntrinsicMatrix();
+	} else {
+		for (int v=0; v<mViewCount; v++) {
+			mK[v].at<float>(0, 0) /= USE_SMALLER_CANVAS;
+			mK[v].at<float>(1, 1) /= USE_SMALLER_CANVAS;
+			mK[v].at<float>(0, 2) /= USE_SMALLER_CANVAS;
+			mK[v].at<float>(1, 2) /= USE_SMALLER_CANVAS;
+		}
+	}
+
+	for (int v=0; v<mViewCount; v++) {
+		float scale = (mK[v].at<float>(0, 0) + mK[v].at<float>(1, 1))/2 ;
+		logMsg(LOG_DEBUG, stringFormat("Project scale: %f", scale) );
+		mSphericalWarpers.push_back( shared_ptr<PROJECT_METHOD>( new PROJECT_METHOD( scale ) ) );
+	}
 	logMsg(LOG_INFO, "=== Start to construct the sphere map ===");
 	constructSphereMap();
 	return mCanvasROI.size();
 }
 
 void MappingProjector::constructSphereMap() {
-	// Calculate mR
-	logMsg(LOG_INFO, "=== Calculate projection matrix for each view ===");
-	calcRotationMatrix();
-	
 	// Build the maps
 	logMsg(LOG_INFO, "=== Build maps for each views ===");
 	findingMappingAndROI();
@@ -60,10 +81,47 @@ void MappingProjector::calcRotationMatrix() {
 	}
 }
 
+void MappingProjector::recalcRotationMatrix() {
+	for (int v=0; v<mViewCount; v++) {
+		Mat r = Mat::zeros(3, 3, CV_32F);
+		Mat ro = mR[v];
+		float alpha = atan2(ro.at<float>(1, 0), ro.at<float>(0, 0));
+		float beta = atan2( -ro.at<float>(2, 0), sqrt( pow(ro.at<float>(2, 1), 2) + pow(ro.at<float>(2, 2), 2) ) );
+		float gamma = atan2(ro.at<float>(2, 1), ro.at<float>(2, 2));
+
+		// Take camera as reference coordinate system, around: x-axis -> pitch, y-axis -> yaw, z->axis -> roll
+		Mat Rz = getZMatrix(gamma);
+		Mat Ry = getYMatrix(alpha);
+		Mat Rx = getXMatrix(beta);
+		// r = Ry * Rz * Rx;
+		r = Ry * Rx * Rz;
+		mR[v] = r;
+	}
+}
+
+void MappingProjector::reverseRotationMatrix(Mat r) {
+	float alpha = atan2(r.at<float>(1, 0), r.at<float>(0, 0));
+	float beta = atan2( -r.at<float>(2, 0), sqrt( pow(r.at<float>(2, 1), 2) + pow(r.at<float>(2, 2), 2) ) );
+	float gamma = atan2(r.at<float>(2, 1), r.at<float>(2, 2));
+}
+
+void MappingProjector::calcIntrinsicMatrix() {
+	mK.resize(mViewCount);
+	for (int v=0; v<mViewCount; v++) {
+		mK[v] = Mat::zeros(3, 3, CV_32F);
+		// Refresh focal length from pto file
+		mK[v].at<float>(0, 0) = static_cast<float> ( mFocalLength );
+		mK[v].at<float>(1, 1) = static_cast<float> ( mFocalLength );
+		mK[v].at<float>(0, 2) = static_cast<float> ( mViewSize.width/2 );
+		mK[v].at<float>(1, 2) = static_cast<float> ( mViewSize.height/2 );
+		mK[v].at<float>(2, 2) = 1.f;
+	}
+}
+
 void MappingProjector::findingMappingAndROI() {
 	for (int v=0; v<mViewCount; v++) {
 		Mat uxmap, uymap;
-		mMapROIs.push_back( mSphericalWarper->buildMaps(mViewSize, mA, mR[v], uxmap, uymap) );
+		mMapROIs.push_back( mSphericalWarpers[v]->buildMaps(mViewSize, mK[v], mR[v], uxmap, uymap) );
 		mUxMaps.push_back( uxmap );
 		mUyMaps.push_back( uymap );
 	}
@@ -211,6 +269,15 @@ void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
     mFrameProcessed++;
 }
 
+void MappingProjector::setCameraParams( vector<Mat> Rs, vector<Mat> Ks, vector<Mat> Ds ) {
+	if ( !Rs.empty() )
+		mR = Rs;
+	if ( !Ds.empty() )
+		mD = Ds;
+	if ( !Ks.empty() ) 
+		mK = Ks;
+}
+
 void MappingProjector::checkFPS() {
 	double total = 0.f;
 	for (unsigned int i=0; i<mExecTimes.size(); i++) 
@@ -234,7 +301,7 @@ MappingProjector::MappingProjector(int viewCount, Size viewSize, vector<struct M
 	mViewParams = params;
 	mFocalLength = focalLength;
 
-	logMsg(LOG_DEBUG, stringFormat("\tFocal Length: %lf", mFocalLength));
+	logMsg(LOG_DEBUG, stringFormat("\tFocal Length in PTO: %lf", mFocalLength));
 	for (int v=0; v<mViewCount; v++)
 		logMsg(LOG_DEBUG, stringFormat("\t\tV%d: Yaw: %lf\t, Pitch: %lf\t, Roll: %lf", v, params[v].y, params[v].p, params[v].r));
 }

@@ -35,12 +35,12 @@ class MappingProjector {
 		int mViewCount;
 		Size mViewSize;
 
-		shared_ptr<PROJECT_METHOD> mSphericalWarper;
+		vector< shared_ptr<PROJECT_METHOD> > mSphericalWarpers;
 		vector< Mat > mR;
+		vector< Mat > mK;
+		vector< Mat > mD;
 		
 		vector<struct MutualProjectParam> mViewParams;
-		Mat mA; // Also known as K
-		Mat mD;
 		
 		vector<Mat> mUxMaps;
 		vector<Mat> mUyMaps;
@@ -54,6 +54,7 @@ class MappingProjector {
 
 		void constructSphereMap();
 		void calcRotationMatrix();
+		void calcIntrinsicMatrix();
 		void findingMappingAndROI();
 		void constructMasks();
 		void constructAlphaChannel();
@@ -62,10 +63,13 @@ class MappingProjector {
 		Mat getZMatrix(double alpha);
 		Mat getYMatrix(double beta);
 		Mat getXMatrix(double gamma);
+		void reverseRotationMatrix(Mat r);
+		void recalcRotationMatrix();
 
 	public:
 		void checkFPS();
-		Size calcProjectionMatrix(map< string, Mat > calibrationData);
+		void setCameraParams( vector<Mat> Rs, vector<Mat> Ks, vector<Mat> Ds );
+		Size calcProjectionMatrix();
 		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 
 		MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength);
