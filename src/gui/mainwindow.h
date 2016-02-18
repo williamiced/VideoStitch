@@ -25,21 +25,21 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
     public:
+        static void updateImage(Mat img);
         explicit MainWindow(QWidget *parent = 0);
         ~MainWindow();
 
     private slots:
-        void updateImage();
         void on_pushButton_clicked();
 
     private:
-        Ui::MainWindow *ui;
-        unique_ptr<VideoStitcher> mVS;
-        QTimer* mUpdateTimer;
+        int argc;
+        char** argv;
+        static Ui::MainWindow *ui;
+        static unique_ptr<VideoStitcher> mVS;
 
         void doEnvSet();
         void launchStitcher();
-        void switchUpdateTimer(bool turnOn);
 };
 
 #endif // MAINWINDOW_H

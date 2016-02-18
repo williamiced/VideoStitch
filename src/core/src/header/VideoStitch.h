@@ -17,6 +17,8 @@
 using namespace cv::cuda;
 using namespace std;
 
+typedef void (*function_ptr) ( Mat );
+
 class VideoStitcher {
 	private:
 		shared_ptr<VideoLoader> mVL;
@@ -25,13 +27,13 @@ class VideoStitcher {
 		shared_ptr<VideoStablizer> mVS;
 		shared_ptr<MappingProjector> mMP;
 
-		queue<Mat> mReadyImages;
+		function_ptr mCallback;
 
 		Size mOutputVideoSize;
 
 	public:
 		void doRealTimeStitching(int argc, char* argv[]);
-		bool askForImage(Mat& mat);
+		void registerCallbackFunc ( function_ptr p );
 		VideoStitcher(int argc, char* argv[]);
 		~VideoStitcher();
 };

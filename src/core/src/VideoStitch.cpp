@@ -21,6 +21,8 @@ VideoStitcher::~VideoStitcher() {
 }
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]) {
+	mCallback = nullptr;
+
 	if ( !checkArguments(argc, argv) )
 		exitWithMsg(E_BAD_ARGUMENTS);
 	/** 
@@ -105,17 +107,15 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		
 		//Mat canvas;
 		//targetCanvas.download(canvas);	
-		mReadyImages.push(targetCanvas);
+		if (mCallback != nullptr)
+			mCallback(targetCanvas);
+
 		(*outputVideo) << targetCanvas;
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
 }
 
-bool VideoStitcher::askForImage(Mat& mat) {
-	if (mReadyImages.empty())
-		return false;
-	mat = mReadyImages.front();
-	mReadyImages.pop();
-	return true;
+void VideoStitcher::registerCallbackFunc ( function_ptr p ) {
+	mCallback = p;
 }

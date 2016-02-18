@@ -1,13 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow){
-    ui->setupUi(this);
+Ui::MainWindow* MainWindow::ui = new Ui::MainWindow;
+unique_ptr<VideoStitcher> MainWindow::mVS = nullptr;
 
-    mVS = nullptr;
-    mUpdateTimer = nullptr;
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent) {
+
+    ui->setupUi(this);
+    doEnvSet();
 }
 
 MainWindow::~MainWindow() {
@@ -15,11 +16,14 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::on_pushButton_clicked() {
-    doEnvSet();
-
     launchStitcher();
 
-    switchUpdateTimer(true);
+    mVS->registerCallbackFunc ( updateImage );
+    mVS->doRealTimeStitching(argc, argv);
+
+    //mVS.release();
+    //mVS = nullptr;
+    //mUpdateTimer = nullptr;
 }
 
 void MainWindow::doEnvSet() {
@@ -32,8 +36,8 @@ void MainWindow::launchStitcher() {
     vector<string> inputs;
     boost::split(inputs, inputStr, boost::is_any_of(" "));
 
-    int argc = inputs.size();
-    char** argv = new char*[inputs.size()];
+    argc = inputs.size();
+    argv = new char*[inputs.size()];
 
     for(size_t i = 0; i < inputs.size(); i++) {
         argv[i] = new char[inputs[i].length() + 1];
@@ -41,28 +45,13 @@ void MainWindow::launchStitcher() {
     }
 
     mVS = unique_ptr<VideoStitcher> ( new VideoStitcher(argc, argv) );
-    mVS->doRealTimeStitching(argc, argv);
-    mVS.release();
 }
 
-void MainWindow::switchUpdateTimer(bool turnOn) {
-    if (mUpdateTimer == nullptr) {
-        mUpdateTimer = new QTimer(this);
-        connect(mUpdateTimer, SIGNAL(timeout()), this, SLOT(updateImage()));
-    }
-    if (turnOn)
-        mUpdateTimer->start(50);
-    else
-        mUpdateTimer->stop();
-}
-
-void MainWindow::updateImage() {
+void MainWindow::updateImage(cv::Mat img) {
+    cout << "Update image" << endl;
     if (mVS == nullptr)
         return;
-    cv::Mat img;
-    if (mVS->askForImage(img) ) {
-        QImage qimg = Mat2QImage(img);
-        ui->mainImage->setPixmap(QPixmap::fromImage(qimg));
-        ui->mainImage->show();
-    }
+    QImage qimg = Mat2QImage(img);
+    ui->mainImage->setPixmap(QPixmap::fromImage(qimg));
+    ui->mainImage->repaint();
 }
