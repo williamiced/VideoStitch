@@ -16,13 +16,6 @@ Size MappingProjector::calcProjectionMatrix() {
 		//recalcRotationMatrix();
 	}
 
-	/*
-	for (auto r: mR) {
-		cout << r << endl;	
-		reverseRotationMatrix(r);
-	}
-	*/
-
 	// Calculate mK
 	if (mK.size() == 0) {
 		logMsg(LOG_INFO, "=== Calculate intrinsic matrix for each view ===");
@@ -97,12 +90,6 @@ void MappingProjector::recalcRotationMatrix() {
 		r = Ry * Rx * Rz;
 		mR[v] = r;
 	}
-}
-
-void MappingProjector::reverseRotationMatrix(Mat r) {
-	float alpha = atan2(r.at<float>(1, 0), r.at<float>(0, 0));
-	float beta = atan2( -r.at<float>(2, 0), sqrt( pow(r.at<float>(2, 1), 2) + pow(r.at<float>(2, 2), 2) ) );
-	float gamma = atan2(r.at<float>(2, 1), r.at<float>(2, 2));
 }
 
 void MappingProjector::calcIntrinsicMatrix() {

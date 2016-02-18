@@ -12,10 +12,10 @@ CFLAGS+=`pkg-config --cflags opencv`
 LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64 -lboost_system -lboost_timer
 
 # Paths
-SRC=src
+SRC=src/core/src
 OBJ=obj
-SRC_FILES = $(wildcard $(SRC)/*.cpp) $(wildcard $(SRC)/*/*.cpp)
-DEPD = $(wildcard $(SRC)/*.h) $(wildcard $(SRC)/*/*.h)
+SRC_FILES = $(wildcard $(SRC)/*.cpp)
+DEPD = $(wildcard $(SRC)/header/.h)
 BIN=bin
 DATA=data/mp4
 INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -Isrc -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
@@ -33,19 +33,17 @@ tools: VideoStitch CameraCalibrator ImagesDumper
 
 BUILD_PRINT = \e[1;34mBuilding $<\e[0m
 
+makeObj: $(OBJ_FILES)
+	@echo "$(cccyan)[Obj files generated]$(ccend)"
+
 $(OBJ)/%.o: src/%.cpp
 	@mkdir -p $(OBJ)
 	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 
 
-$(OBJ)/%.o: src/*/%.cpp
-	@mkdir -p $(OBJ)
-	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"
-	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 
-
-VideoStitch: $(OBJ_FILES)
+VideoStitch: $(OBJ_FILES) 
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
-	$(CC) $? -o $(BIN)/$@ $(LDFLAGS)
+	$(CC) $? -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS)
 
 CameraCalibrator:
 	@echo "$(cccyan)[Ganerate camera calibrator]$(ccend)"
@@ -56,14 +54,16 @@ ImagesDumper:
 	$(CC) obj/Usage.o -o $(BIN)/$@ tools/imagesDumper/ImagesDumper.cpp $(LDFLAGS)
 
 run:
-	$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 500 --output StitchResult.avi
-	#$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 200 --output StitchResult.avi
+	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
+	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 200 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml
 
 dumper:
-	$(BIN)/ImagesDumper data/MultiCalibration/inputVideo.txt 0 1 1 data/MultiCalibration/dump
+	#$(BIN)/ImagesDumper data/Library20160216/inputVideo.txt data/Library20160216/pattern.png 0 4700 10 data/Library20160216/dump
+	$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 3200 10 data/Library20160216/dump2
 
 clean:
 	-rm -r $(BIN)/VideoStitch

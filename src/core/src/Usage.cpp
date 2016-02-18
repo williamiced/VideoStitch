@@ -35,3 +35,7 @@ void logMsg(logTypeEnum type, string msg) {
     else 
         cerr << "[ DEBUG ] " << msg << "\t\t\t - " << asctime(localtime(&result));
 }
+
+string testStr() {
+    return string("HelloWorld");
+}

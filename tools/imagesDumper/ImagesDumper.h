@@ -9,11 +9,16 @@
 #include <sstream>
 #include "../../src/header/Usage.h"
 
-#include "opencv2/core/core.hpp"
+#include "opencv2/core.hpp"
 #include "opencv2/opencv.hpp"
+#include "opencv2/features2d.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/xfeatures2d.hpp"
 
 using namespace cv;
 using namespace std;
+using namespace cv::xfeatures2d;
 
 class ImagesDumper {
 	private:
@@ -22,10 +27,12 @@ class ImagesDumper {
 		int mStartFrame;
 		int mStep;
 		string mOutputLoc;
+		Mat mPattern;	
 
 	public:
 		void startDumpImages();
-		ImagesDumper(char* fileName, int startFrame, int duration, int step, string outputLoc);
+		bool hasPattern(Mat img);
+		ImagesDumper(char* fileName, char* patternName, int startFrame, int duration, int step, string outputLoc);
 		~ImagesDumper();
 };
 

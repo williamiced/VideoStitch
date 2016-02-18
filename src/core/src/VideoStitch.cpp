@@ -21,6 +21,8 @@ VideoStitcher::~VideoStitcher() {
 }
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]) {
+	if ( !checkArguments(argc, argv) )
+		exitWithMsg(E_BAD_ARGUMENTS);
 	/** 
 		[Do preprocess]
 			1. Load videos
@@ -103,18 +105,17 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		
 		//Mat canvas;
 		//targetCanvas.download(canvas);	
+		mReadyImages.push(targetCanvas);
 		(*outputVideo) << targetCanvas;
-		
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
 }
 
-int main(int argc, char* argv[]) {
-	if ( !checkArguments(argc, argv) )
-		exitWithMsg(E_BAD_ARGUMENTS);
-	VideoStitcher* vs = new VideoStitcher(argc, argv);
-	vs->doRealTimeStitching(argc, argv);
-
-	delete vs;
+bool VideoStitcher::askForImage(Mat& mat) {
+	if (mReadyImages.empty())
+		return false;
+	mat = mReadyImages.front();
+	mReadyImages.pop();
+	return true;
 }

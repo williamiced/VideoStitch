@@ -63,7 +63,6 @@ class MappingProjector {
 		Mat getZMatrix(double alpha);
 		Mat getYMatrix(double beta);
 		Mat getXMatrix(double gamma);
-		void reverseRotationMatrix(Mat r);
 		void recalcRotationMatrix();
 
 	public:
