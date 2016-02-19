@@ -25,54 +25,36 @@ class MappingProjector {
 	private:
 		vector<double> mExecTimes;
 		unsigned int mFrameProcessed;
-		unsigned int mLastFrameIdx;
-		char* mLastFrameTime;
 
 		shared_ptr<ExposureProcessor> mEP;
 		shared_ptr<BlendingProcessor> mBP;
-		cv::Ptr<cv::detail::Blender> mBlender;
-		double mFocalLength;
 		int mViewCount;
 		Size mViewSize;
+		Size mFinalCanvasSize;
 
 		vector< shared_ptr<PROJECT_METHOD> > mSphericalWarpers;
 		vector< Mat > mR;
 		vector< Mat > mK;
-		vector< Mat > mD;
-		
-		vector<struct MutualProjectParam> mViewParams;
-		
 		vector<Mat> mUxMaps;
 		vector<Mat> mUyMaps;
+		vector<Mat> mInverseMapX;
+		vector<Mat> mInverseMapY;
 		vector<Rect> mMapROIs;
-		vector<Point> mCorners;
-		vector< vector<RenderArea> > mRenderAreas;
-		vector<Mat> mMapMasks;
 		Rect mCanvasROI;
-		Mat mAlphaChannel;
-		vector<Mat> mViewAlpha;
 
-		void constructSphereMap();
-		void calcRotationMatrix();
-		void calcIntrinsicMatrix();
-		void findingMappingAndROI();
-		void constructMasks();
-		void constructAlphaChannel();
-		void mixWithAlphaChannel(Mat& img, int v);
+		void setupWarpers();
+		void buildMapsForViews();
 		void updateCurrentCanvasROI();
-		Mat getZMatrix(double alpha);
-		Mat getYMatrix(double beta);
-		Mat getXMatrix(double gamma);
-		void recalcRotationMatrix();
+		void constructInverseMaps();
+		Vec3b getInversePixel(unsigned int y, unsigned int x, vector<Mat> frames);
+		void defineCanvasSize();
 
 	public:
-		void checkFPS();
-		void setCameraParams( vector<Mat> Rs, vector<Mat> Ks, vector<Mat> Ds );
+		MappingProjector(int viewCount, Size viewSize);
+		void renderInterestArea(Mat& outImg, vector<Mat> frames, float u1, float u2, float v1, float v2);
 		Size calcProjectionMatrix();
-		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
-
-		MappingProjector(int viewCount, Size viewSize, vector<struct MutualProjectParam> params, double focalLength);
-		~MappingProjector();
+		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);
+		void setCameraParams(vector<Mat> Rs, vector<Mat> Ks);
 };
 
 #endif // _H_MAPPING_PROJECTOR

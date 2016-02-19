@@ -36,6 +36,38 @@ void logMsg(logTypeEnum type, string msg) {
         cerr << "[ DEBUG ] " << msg << "\t\t\t - " << asctime(localtime(&result));
 }
 
-string testStr() {
-    return string("HelloWorld");
+Mat getZMatrix(double alpha) {
+    Mat z = Mat::zeros(3, 3, CV_32F);
+    float cosz = cos(alpha);
+    float sinz = sin(alpha);
+    z.at<float>(0, 0) = cosz;
+    z.at<float>(0, 1) = -sinz;
+    z.at<float>(1, 0) = sinz;
+    z.at<float>(1, 1) = cosz;
+    z.at<float>(2, 2) = 1.f;
+    return z;
+}
+
+Mat getYMatrix(double beta) {
+    Mat y = Mat::zeros(3, 3, CV_32F);
+    float cosy = cos(beta);
+    float siny = sin(beta);
+    y.at<float>(0, 0) = cosy;
+    y.at<float>(0, 2) = siny;
+    y.at<float>(1, 1) = 1.f;
+    y.at<float>(2, 0) = -siny;
+    y.at<float>(2, 2) = cosy;
+    return y;
+}
+
+Mat getXMatrix(double gamma) {
+    Mat x = Mat::zeros(3, 3, CV_32F);
+    float cosx = cos(gamma);
+    float sinx = sin(gamma);
+    x.at<float>(0, 0) = 1.f;
+    x.at<float>(1, 1) = cosx;
+    x.at<float>(1, 2) = -sinx;
+    x.at<float>(2, 1) = sinx;
+    x.at<float>(2, 2) = cosx;
+    return x;
 }

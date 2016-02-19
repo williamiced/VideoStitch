@@ -28,7 +28,6 @@ class VideoStitcher {
 		shared_ptr<MappingProjector> mMP;
 
 		function_ptr mCallback;
-
 		Size mOutputVideoSize;
 
 	public:

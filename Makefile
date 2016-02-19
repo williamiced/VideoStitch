@@ -18,7 +18,7 @@ SRC_FILES = $(wildcard $(SRC)/*.cpp)
 DEPD = $(wildcard $(SRC)/header/.h)
 BIN=bin
 DATA=data/mp4
-INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -Isrc -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
+INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -I$(SRC) -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
 
 # All files
 OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
@@ -36,7 +36,7 @@ BUILD_PRINT = \e[1;34mBuilding $<\e[0m
 makeObj: $(OBJ_FILES)
 	@echo "$(cccyan)[Obj files generated]$(ccend)"
 
-$(OBJ)/%.o: src/%.cpp
+$(OBJ)/%.o: $(SRC)/%.cpp 
 	@mkdir -p $(OBJ)
 	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 
@@ -56,7 +56,7 @@ ImagesDumper:
 run:
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
-	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 200 --output StitchResult.avi
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 30 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml

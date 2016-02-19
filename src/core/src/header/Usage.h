@@ -46,6 +46,8 @@ const boost::unordered_map<returnValEnum, const char*> returnValToString = map_l
 void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);
 string stringFormat(const string fmt_str, ...); 
-string testStr();
+Mat getZMatrix(double alpha);
+Mat getYMatrix(double beta);
+Mat getXMatrix(double gamma);
 
 #endif // _H_USAGE
