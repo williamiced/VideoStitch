@@ -36,7 +36,7 @@ void MappingProjector::setCameraParams(vector<Mat> Rs, vector<Mat> Ks) {
 		mK = Ks;
 }
 
-Size MappingProjector::calcProjectionMatrix() {
+void MappingProjector::calcProjectionMatrix() {
 	// Initialize warpers
 	setupWarpers();
 
@@ -45,11 +45,6 @@ Size MappingProjector::calcProjectionMatrix() {
 
 	// Calculate the size of current canvas
 	updateCurrentCanvasROI();
-
-	// Construct inverse map by maps
-	constructInverseMaps();
-
-	return mCanvasROI.size();
 }
 
 void MappingProjector::setupWarpers() {
@@ -67,8 +62,6 @@ void MappingProjector::buildMapsForViews() {
 		mMapROIs.push_back( mSphericalWarpers[v]->buildMaps(mViewSize, mK[v], mR[v], uxmap, uymap) );
 		mUxMaps.push_back( uxmap );
 		mUyMaps.push_back( uymap );
-		cout << "Ux map size: " << uxmap.rows << ", " << uxmap.cols << endl;
-		cout << "Uy map size: " << uymap.rows << ", " << uymap.cols << endl;
 	}
 }
 
@@ -83,28 +76,6 @@ void MappingProjector::updateCurrentCanvasROI() {
 		mMapROIs[v] = Rect( mMapROIs[v].x - mCanvasROI.x, mMapROIs[v].y - mCanvasROI.y, mMapROIs[v].width+1, mMapROIs[v].height+1 );
 }
 
-void MappingProjector::constructInverseMaps() {
-	for (int v=0; v<mViewCount; v++) {
-		mInverseMapX.push_back( Mat::zeros(mFinalCanvasSize.height, mFinalCanvasSize.width, CV_32SC1) );
-		mInverseMapY.push_back( Mat::zeros(mFinalCanvasSize.height, mFinalCanvasSize.width, CV_32SC1) );
-
-		for(int y = 0; y < mViewSize.height; y++) {
-			for(int x = 0; x < mViewSize.width; x++) {
-				int xInCanvas = static_cast<int>( (mUxMaps[v].at<float>(y, x) + mMapROIs[v].tl().x) * mFinalCanvasSize.width / mCanvasROI.size().width );
-				int yInCanvas = static_cast<int>( (mUyMaps[v].at<float>(y, x) + mMapROIs[v].tl().y) * mFinalCanvasSize.height / mCanvasROI.size().height );
-
-				//cout << "oy: " << yInCanvas << ", ox: " << xInCanvas << ", x:" << x << ", y:" << y << endl;
-				if (xInCanvas >= mFinalCanvasSize.width || yInCanvas >= mFinalCanvasSize.height)
-					continue;
-
-				mInverseMapX[v].at<int>( yInCanvas, xInCanvas ) = x;
-				mInverseMapY[v].at<int>( yInCanvas, xInCanvas ) = y;
-				
-			}
-		}
-	}
-}
-
 void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, float u1, float u2, float v1, float v2) {
 	/** 
 		Render area from tl(u1, v1) to br(u2, v2) 
@@ -112,8 +83,8 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, float
 		u : [-PI, PI]
 		v : [0, PI]
 	*/
-	unsigned int canvasWidth = mFinalCanvasSize.width;
-	unsigned int canvasHeight = mFinalCanvasSize.height;
+	unsigned int canvasWidth = mCanvasROI.size().width;
+	unsigned int canvasHeight = mCanvasROI.size().height;
 	unsigned int tlx = (u1 + M_PI) * canvasWidth / (2 * M_PI);
 	unsigned int tly = v1 * canvasHeight / M_PI;
 	unsigned int brx = (u2 + M_PI) * canvasWidth / (2 * M_PI);
@@ -121,36 +92,46 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, float
 	unsigned int outWidth 	= (brx > tlx ? (brx-tlx) : (brx-tlx + canvasWidth) );
 	unsigned int outHeight 	= (bry > tly ? (bry-tly) : (bry-tly + canvasHeight) );
 
-	outImg = Mat(outHeight, outWidth, CV_8UC3);
-	
-	for (unsigned int y = 0; y < outHeight; y++ ) 
-		for (unsigned int x = 0; x < outWidth; x++ ) 
-			outImg.at<Vec3b>(y, x) = getInversePixel( (tly+y)%canvasHeight, (tlx+x)%canvasWidth, frames);
+	outImg = Mat(mOutputWindowSize.height, mOutputWindowSize.width, CV_8UC3);
+
+	float scaleX = static_cast<float>(mOutputWindowSize.width) / outWidth;
+	float scaleY = static_cast<float>(mOutputWindowSize.height) / outHeight;
+
+	for (int y = 0; y < mOutputWindowSize.height; y++) {
+		for (int x = 0; x < mOutputWindowSize.width; x++) {
+			int canvasX = static_cast<int>( x / scaleX + tlx ) % canvasWidth;
+			int canvasY = static_cast<int>( y / scaleY + tly ) % canvasHeight;
+			outImg.at<Vec3b>(y, x) = getInversePixel(canvasY, canvasX, frames);
+		}
+	}
 }
 
-Vec3b MappingProjector::getInversePixel(unsigned int y, unsigned int x, vector<Mat> frames) {
-	cout << y << ", " << x << endl;
+Vec3b MappingProjector::getInversePixel(int y, int x, vector<Mat> frames) {
 	Vec3b pixelValue = Vec3b(0, 0, 0);
 	for (int v=0; v<mViewCount; v++) {
-		unsigned int vx = mInverseMapX[v].at<int>(y, x);
-		unsigned int vy = mInverseMapY[v].at<int>(y, x);
-		cout << vy << " ??? " << vx << endl;
-
-		if (vx == 0 && vy == 0)
+		if ( !mMapROIs[v].contains( Point(x, y) ) )
 			continue;
+		int vx = static_cast<int> (mUxMaps[v].at<float>(y - mMapROIs[v].tl().y, x - mMapROIs[v].tl().x) );
+		int vy = static_cast<int> (mUyMaps[v].at<float>(y - mMapROIs[v].tl().y, x - mMapROIs[v].tl().x) );
 		// Not blend yet
+		if (vy >= mViewSize.height || vx >= mViewSize.width || vy < 0 || vx < 0)
+			continue;
 		pixelValue = frames[v].at<Vec3b>(vy, vx);
 	}
 	return pixelValue;
 }
 
-void MappingProjector::defineCanvasSize() {
-	mFinalCanvasSize = Size(1000, 500);
+void MappingProjector::defineWindowSize() {
+	mOutputWindowSize = Size(OUTPUT_WINDOW_WIDTH, OUTPUT_WINDOW_HEIGHT);
+}
+
+Size MappingProjector::getOutputImageSize() {
+	return mOutputWindowSize;
 }
 
 MappingProjector::MappingProjector(int viewCount, Size viewSize) : 
+	mFrameProcessed(0),
 	mViewCount(viewCount),
-	mViewSize(viewSize),
-	mFrameProcessed(0) {
-		defineCanvasSize();
+	mViewSize(viewSize) {
+		defineWindowSize();
 }

@@ -20,8 +20,13 @@ bool checkArguments(int argc, char** argv) {
 VideoStitcher::~VideoStitcher() {
 }
 
-VideoStitcher::VideoStitcher(int argc, char* argv[]) {
-	mCallback = nullptr;
+VideoStitcher::VideoStitcher(int argc, char* argv[]): 
+	mTransmitFunc(nullptr),
+	mRenderRegionUpdater(nullptr),
+	mRenderU1(-M_PI),
+	mRenderU2(M_PI),
+	mRenderV1(0),
+	mRenderV2(M_PI) {
 
 	if ( !checkArguments(argc, argv) )
 		exitWithMsg(E_BAD_ARGUMENTS);
@@ -58,7 +63,7 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 #endif
 
 	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
-	mOutputVideoSize = mMP->calcProjectionMatrix();
+	mMP->calcProjectionMatrix();
 }
 
 void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
@@ -74,8 +79,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 	double videoFPS = mVL->getVideoFPS();
 
-	logMsg(LOG_INFO, stringFormat("Canvas size: [%d X %d]", mOutputVideoSize.width, mOutputVideoSize.height) );
-	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, mOutputVideoSize );
+	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, mMP->getOutputImageSize() );
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
@@ -91,15 +95,17 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 #endif
 			frames.push_back(frame);
 		}
-		mMP->renderInterestArea(targetCanvas, frames, 0, M_PI/2, M_PI/3, M_PI*2/3);
+		if (mRenderRegionUpdater != nullptr)
+			mRenderRegionUpdater(mRenderU1, mRenderU2, mRenderV1, mRenderV2);
+
+		mMP->renderInterestArea(targetCanvas, frames, mRenderU1, mRenderU2, mRenderV1, mRenderV2);
 		//mMP->projectOnCanvas(targetCanvas, frames);
 		//mVS->stablize(targetCanvas);
 		
 		//Mat canvas;
 		//targetCanvas.download(canvas);
-		if (mCallback != nullptr)
-			mCallback(targetCanvas);
-		cv::resize(targetCanvas, targetCanvas, mOutputVideoSize);
+		if (mTransmitFunc != nullptr)
+			mTransmitFunc(targetCanvas);
 
 		(*outputVideo) << targetCanvas;
 	}
@@ -107,6 +113,10 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Done stitching ===");
 }
 
-void VideoStitcher::registerCallbackFunc ( function_ptr p ) {
-	mCallback = p;
+void VideoStitcher::registerCallbackFunc ( transmitFuncPtr p ) {
+	mTransmitFunc = p;
+}
+
+void VideoStitcher::registerUpdaterFunc ( renderRegionUpdaterPtr p ) {
+	mRenderRegionUpdater = p;
 }

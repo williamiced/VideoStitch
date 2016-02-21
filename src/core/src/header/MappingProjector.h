@@ -30,29 +30,27 @@ class MappingProjector {
 		shared_ptr<BlendingProcessor> mBP;
 		int mViewCount;
 		Size mViewSize;
-		Size mFinalCanvasSize;
+		Size mOutputWindowSize;
 
 		vector< shared_ptr<PROJECT_METHOD> > mSphericalWarpers;
 		vector< Mat > mR;
 		vector< Mat > mK;
 		vector<Mat> mUxMaps;
 		vector<Mat> mUyMaps;
-		vector<Mat> mInverseMapX;
-		vector<Mat> mInverseMapY;
 		vector<Rect> mMapROIs;
 		Rect mCanvasROI;
 
 		void setupWarpers();
 		void buildMapsForViews();
 		void updateCurrentCanvasROI();
-		void constructInverseMaps();
-		Vec3b getInversePixel(unsigned int y, unsigned int x, vector<Mat> frames);
-		void defineCanvasSize();
+		Vec3b getInversePixel(int y, int x, vector<Mat> frames);
+		void defineWindowSize();
 
 	public:
 		MappingProjector(int viewCount, Size viewSize);
 		void renderInterestArea(Mat& outImg, vector<Mat> frames, float u1, float u2, float v1, float v2);
-		Size calcProjectionMatrix();
+		void calcProjectionMatrix();
+		Size getOutputImageSize();
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);
 		void setCameraParams(vector<Mat> Rs, vector<Mat> Ks);
 };

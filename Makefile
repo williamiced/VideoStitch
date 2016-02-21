@@ -36,7 +36,7 @@ BUILD_PRINT = \e[1;34mBuilding $<\e[0m
 makeObj: $(OBJ_FILES)
 	@echo "$(cccyan)[Obj files generated]$(ccend)"
 
-$(OBJ)/%.o: $(SRC)/%.cpp 
+$(OBJ)/%.o: $(SRC)/%.cpp $(SRC)/header/%.h
 	@mkdir -p $(OBJ)
 	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 

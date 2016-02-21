@@ -1,5 +1,7 @@
 //#define USE_LENS_UNDISTORT
 #define PROJECT_METHOD cv::detail::SphericalWarper
+#define OUTPUT_WINDOW_WIDTH 500
+#define OUTPUT_WINDOW_HEIGHT 500
 
 //#define USE_ALIGN_PROCESSOR
 //#define USE_EXTERNAL_CALIBRATION_FILE
