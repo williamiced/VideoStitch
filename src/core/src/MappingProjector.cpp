@@ -83,6 +83,7 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, float
 		u : [-PI, PI]
 		v : [0, PI]
 	*/
+	logMsg(LOG_DEBUG, stringFormat("Render from theta(%f -> %f), phi(%f -> %f)", u1, u2, v1, v2) );
 	unsigned int canvasWidth = mCanvasROI.size().width;
 	unsigned int canvasHeight = mCanvasROI.size().height;
 	unsigned int tlx = (u1 + M_PI) * canvasWidth / (2 * M_PI);

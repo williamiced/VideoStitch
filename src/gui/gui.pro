@@ -4,9 +4,11 @@
 
 FORMS += mainwindow.ui
 HEADERS += UsageGUI.h \
-    mainwindow.h
+    mainwindow.h \
+    VideoStitchThread.h
 SOURCES += UsageGUI.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    VideoStitchThread.cpp
 
 INCLUDEPATH += $$PWD/../core/src
 

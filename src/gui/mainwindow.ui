@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1274</width>
-    <height>688</height>
+    <width>534</width>
+    <height>643</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,14 +17,14 @@
    <widget class="QPushButton" name="pushButton">
     <property name="geometry">
      <rect>
-      <x>10</x>
+      <x>200</x>
       <y>0</y>
       <width>99</width>
       <height>27</height>
      </rect>
     </property>
     <property name="text">
-     <string>PushButton</string>
+     <string>Start Stitch</string>
     </property>
    </widget>
    <widget class="QLabel" name="mainImage">
@@ -32,8 +32,8 @@
      <rect>
       <x>10</x>
       <y>60</y>
-      <width>1201</width>
-      <height>551</height>
+      <width>500</width>
+      <height>500</height>
      </rect>
     </property>
     <property name="text">
@@ -46,7 +46,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1274</width>
+     <width>534</width>
      <height>25</height>
     </rect>
    </property>
