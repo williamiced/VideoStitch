@@ -81,20 +81,21 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point
 		u : [-PI, PI]
 		v : [0, PI]
 	*/
-	logMsg(LOG_INFO, stringFormat("Center: (%f, %f)", center.x, center.y) );
 	boost::timer::cpu_timer boostTimer;
 
-	float maxAxisOffset = static_cast<float>( sqrt( static_cast<double>(renderRange) ) );
-	Point2f leftTop = Point2f( center.x - maxAxisOffset, center.y - maxAxisOffset )  ; 
-
-	float stepX = 2 * maxAxisOffset / OUTPUT_WINDOW_WIDTH;
-	float stepY = 2 * maxAxisOffset / OUTPUT_WINDOW_HEIGHT;
 	outImg = Mat(OUTPUT_WINDOW_HEIGHT, OUTPUT_WINDOW_WIDTH, CV_8UC3);
-
+	float stepY = renderRange / OUTPUT_WINDOW_WIDTH;
 	for (int y = 0; y < OUTPUT_WINDOW_HEIGHT; y++) {
+		float newV = center.y + (y-2/OUTPUT_WINDOW_HEIGHT)*stepY;
+		float scaleFactor = fabs(cos(newV-M_PI/2));
+		float stepX;
+		if (scaleFactor <= 0.f || stepY / scaleFactor > 2*M_PI/OUTPUT_WINDOW_WIDTH) 
+			stepX = 2*M_PI/OUTPUT_WINDOW_WIDTH;
+		else
+			stepX = stepY / scaleFactor;
+		logMsg(LOG_DEBUG, stringFormat("newV: %f, scaleFactor: %f, stepX: %f, stepY: %f ", newV, scaleFactor, stepX, stepY));
 		for (int x = 0; x < OUTPUT_WINDOW_WIDTH; x++) {
-			float newU = leftTop.x + x * stepX;
-			float newV = leftTop.y + y * stepY;
+			float newU = center.x + (x-2/OUTPUT_WINDOW_WIDTH)*stepX;
 
 			while (newV > M_PI) {
 				newV = fabs(M_PI - newV);
