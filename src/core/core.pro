@@ -7,3 +7,6 @@ HEADERS += $$PWD/src/header/*.h
 SOURCES += $$PWD/src/*.cpp
 INCLUDEPATH += $$PWD/src
 OBJECTS_DIR = $$PWD/../../obj
+
+QMAKE_CXXFLAGS += -fopenmp
+LIBS += -fopenmp

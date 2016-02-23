@@ -10,6 +10,7 @@
 #include <vector>
 #include <map>
 
+#include <header/Params.h>
 #include <header/Usage.h>
 #include <header/ToolBoxParser.h>
 
@@ -29,6 +30,8 @@ class VideoLoader {
 		double mFocalLength;
 		Size mVideoSize;
 		map< string, Mat > mCalibrationMatrix;
+		int mCurrentFirstFrame;
+		int mDuration;
 
 		void loadVideos(char* flieName);
 		void calcFocalLengthInPixel(double crop, double hfov);
@@ -45,9 +48,9 @@ class VideoLoader {
 		void loadCalibrationFile(char* calFileName);
 		void loadCalibrationFileFromToolBox(char* calFileName);
 		void loadPTOFile(char* calFileName);
-		void preloadVideoForDuration(int duration);
+		void preloadVideo();
 
-    	VideoLoader(char* inputFileName);
+    	VideoLoader(char* inputFileName, int duration);
     	~VideoLoader();
 };
 

@@ -8,8 +8,8 @@ CFLAGS=-Wall -O3
 BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
 
 # For OpenCV support
-CFLAGS+=`pkg-config --cflags opencv`
-LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64 -lboost_system -lboost_timer
+CFLAGS+=`pkg-config --cflags opencv` -fopenmp
+LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64 -lboost_system -lboost_timer -lgomp
 
 # Paths
 SRC=src/core/src
@@ -56,14 +56,14 @@ ImagesDumper:
 run:
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
-	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 30 --output StitchResult.avi
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 200 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml
 
 dumper:
-	#$(BIN)/ImagesDumper data/Library20160216/inputVideo.txt data/Library20160216/pattern.png 0 4700 10 data/Library20160216/dump
-	$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 3200 10 data/Library20160216/dump2
+	$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump4
+	#$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump3
 
 clean:
 	-rm -r $(BIN)/VideoStitch

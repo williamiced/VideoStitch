@@ -2,7 +2,8 @@ TEMPLATE = app
 
 SOURCES += main.cpp
 INCLUDEPATH += $$PWD/../gui
-LIBS += -L../core -L../gui -lcore -lgui
+LIBS += -L../core -L../gui -lcore -lgui -fopenmp
+QMAKE_CXXFLAGS += -fopenmp
 
 CONFIG += c++14 \
 
@@ -16,7 +17,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 LIBS += "-L/usr/local/cuda-7.5/lib64" \
         "-L/usr/lib/x86_64-linux-gnu" \
         -lboost_system \
-        -lboost_timer
+        -lboost_timer \
+        -lgomp
 CONFIG += link_pkgconfig
 PKGCONFIG += opencv
 INCLUDEPATH +=  . \

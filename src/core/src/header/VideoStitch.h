@@ -18,7 +18,7 @@ using namespace cv::cuda;
 using namespace std;
 
 typedef void (*transmitFuncPtr) ( Mat );
-typedef void (*renderRegionUpdaterPtr) ( float&, float&, float&, float& );
+typedef void (*renderRegionUpdaterPtr) ( float&, float&, float& );
 
 class VideoStitcher {
 	private:
@@ -31,10 +31,9 @@ class VideoStitcher {
 		transmitFuncPtr mTransmitFunc;
 		renderRegionUpdaterPtr mRenderRegionUpdater;
 		Size mOutputVideoSize;
-		float mRenderU1;
-		float mRenderU2;
-		float mRenderV1;
-		float mRenderV2;
+		float mRenderCenterU;
+		float mRenderCenterV;
+		float mRenderRange;
 
 	public:
 		void doRealTimeStitching(int argc, char* argv[]);

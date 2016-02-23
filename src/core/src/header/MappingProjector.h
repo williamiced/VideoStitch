@@ -8,6 +8,7 @@
 #include <set>
 #include <stack>
 #include <boost/timer/timer.hpp>
+#include <omp.h>
 #include <header/ExposureProcessor.h>
 #include <header/BlendingProcessor.h>
 #include <header/VideoLoader.h>
@@ -38,21 +39,28 @@ class MappingProjector {
 		vector<Mat> mUxMaps;
 		vector<Mat> mUyMaps;
 		vector<Rect> mMapROIs;
+		vector< vector<Mat> > mProjMap;
 		Rect mCanvasROI;
 
 		void setupWarpers();
 		void buildMapsForViews();
 		void updateCurrentCanvasROI();
-		Vec3b getInversePixel(int y, int x, vector<Mat> frames);
 		void defineWindowSize();
+		void interpolateUVcheckupTable();
+		void constructUVcheckupTable();
+		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames);
+		int rad2Deg(float r);
+		float deg2Rad(int d);
 
 	public:
 		MappingProjector(int viewCount, Size viewSize);
-		void renderInterestArea(Mat& outImg, vector<Mat> frames, float u1, float u2, float v1, float v2);
+		void renderInterestArea(Mat& outImg, vector<Mat> frames, Point2f center, float renderRange);
+		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 		void calcProjectionMatrix();
-		Size getOutputImageSize();
+		Size getOutputVideoSize();
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);
 		void setCameraParams(vector<Mat> Rs, vector<Mat> Ks);
+		void checkFPS();
 };
 
 #endif // _H_MAPPING_PROJECTOR

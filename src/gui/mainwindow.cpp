@@ -5,10 +5,10 @@ Ui::MainWindow* MainWindow::ui = new Ui::MainWindow;
 
 int MainWindow::mAnchorX = -1;
 int MainWindow::mAnchorY = -1;
-float MainWindow::mRenderTLx = 0;
-float MainWindow::mRenderTLy = M_PI/2;
-float MainWindow::mFOVx = M_PI/2;
-float MainWindow::mFOVy = M_PI/2;
+float MainWindow::mAnchorCenterX = 0.f;
+float MainWindow::mAnchorCenterY = M_PI/2.f;
+float MainWindow::mCurrentCenterX = 0;
+float MainWindow::mCurrentCenterY = M_PI/2.f;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -38,7 +38,7 @@ void MainWindow::doEnvSet() {
 }
 
 void MainWindow::launchStitcher() {
-    string inputStr = "bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 50 --output StitchResult.avi";
+    string inputStr = "bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi";
     vector<string> inputs;
     boost::split(inputs, inputStr, boost::is_any_of(" "));
 
@@ -56,16 +56,17 @@ void MainWindow::updateImageOnUI(QPixmap qp) {
     ui->mainImage->repaint();
 }
 
-void MainWindow::updateRenderRegion(float& u1, float& u2, float& v1, float& v2) {
-    u1 = mRenderTLx;
-    u2 = (mRenderTLx + mFOVx) < M_PI ? (mRenderTLx + mFOVx) : (mRenderTLx + mFOVx - 2*M_PI);
-    v1 = mRenderTLy;
-    v2 = (mRenderTLy + mFOVy) < M_PI ? (mRenderTLy + mFOVy) : (mRenderTLy + mFOVy - M_PI);
+void MainWindow::updateRenderRegion(float& centerU, float& centerV, float& range) {
+    centerU = mCurrentCenterX;
+    centerV = mCurrentCenterY;
+    range = 1.f;
 }
 
 void MainWindow::mousePressEvent(QMouseEvent *event) {
     mAnchorX = event->x();
     mAnchorY = event->y();
+    mAnchorCenterX = mCurrentCenterX;
+    mAnchorCenterY = mCurrentCenterY;
     mIsMousePressed = true;
 }
 
@@ -76,14 +77,23 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event) {
 void MainWindow::mouseMoveEvent(QMouseEvent *event) {
     if (!mIsMousePressed)
         return;
-    float offsetX = (event->x() - mAnchorX) / 13000.f;
-    float offsetY = (event->y() - mAnchorY) / 13000.f;
+    float offsetX = (event->x() - mAnchorX) / 1000.f;
+    float offsetY = (event->y() - mAnchorY) / 1000.f;
 
-    mRenderTLx = mRenderTLx - offsetX;
-    while(mRenderTLx >= M_PI) mRenderTLx -= 2*M_PI;
-    while(mRenderTLx < -M_PI) mRenderTLx += 2*M_PI;
+    mCurrentCenterX = mAnchorCenterX - offsetX;
+    mCurrentCenterY = mAnchorCenterY - offsetY;
 
-    mRenderTLy = mRenderTLy - offsetY;
-    while(mRenderTLy >= M_PI) mRenderTLy -= M_PI;
-    while(mRenderTLy < 0) mRenderTLy += M_PI;
+    /*
+    if (mRenderTLy > M_PI) {
+        mRenderTLy = fabs(M_PI - mRenderTLy);
+        mRenderTLx = mRenderTLx + M_PI;
+    }
+    if (mRenderTLy < 0) {
+        mRenderTLy = fabs(mRenderTLy);
+        mRenderTLx = mRenderTLx + M_PI;
+    }
+
+    while (mRenderTLx > M_PI) mRenderTLx = mRenderTLx - 2*M_PI;
+    while (mRenderTLx < -M_PI) mRenderTLx = mRenderTLx + 2*M_PI;
+    */
 }

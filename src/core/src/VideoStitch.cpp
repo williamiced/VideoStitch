@@ -23,10 +23,9 @@ VideoStitcher::~VideoStitcher() {
 VideoStitcher::VideoStitcher(int argc, char* argv[]): 
 	mTransmitFunc(nullptr),
 	mRenderRegionUpdater(nullptr),
-	mRenderU1(-M_PI),
-	mRenderU2(M_PI),
-	mRenderV1(0),
-	mRenderV2(M_PI) {
+	mRenderCenterU(-4.f),
+	mRenderCenterV(0.f),
+	mRenderRange(2.f) {
 
 	if ( !checkArguments(argc, argv) )
 		exitWithMsg(E_BAD_ARGUMENTS);
@@ -37,8 +36,7 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]):
 			3. Calculate projection matrixs
 	*/
 	logMsg(LOG_INFO, "=== Do preprocess ===");
-	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input") ) );
-	mVL->preloadVideoForDuration( stoi( getCmdOption(argv, argv + argc, "--duration")) );
+	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
 	logMsg(LOG_INFO, "=== Data loaded complete ===");
 
 	logMsg(LOG_INFO, "=== Initialize Video Stablizer ===");
@@ -79,27 +77,40 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 	double videoFPS = mVL->getVideoFPS();
 
-	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, mMP->getOutputImageSize() );
+	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, mMP->getOutputVideoSize() );
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
 	for (int f=0; f<duration; f++) {
-		logMsg(LOG_DEBUG, stringFormat("\tProcess frame # %d", f ));
+		bool isHealthyFrame = true;
+
+		logMsg(LOG_INFO, stringFormat("\tProcess frame # %d", f ));
 		Mat targetCanvas;
 		vector<Mat> frames;
 		for (int v=0; v<seqCount; v++) {
 			Mat frame;
-			mVL->getFrameInSeq(f, v, frame);
+			if ( !mVL->getFrameInSeq(f, v, frame) ) {
+				logMsg(LOG_WARNING, stringFormat("\t=== Frames %d contain broken frame ===", f));
+				isHealthyFrame = false;
+				break;
+			}
 #ifdef USE_LENS_UNDISTORT	
 			mLP->undistort(frame);
 #endif
 			frames.push_back(frame);
 		}
+		if (!isHealthyFrame)
+			continue;
+		
 		if (mRenderRegionUpdater != nullptr)
-			mRenderRegionUpdater(mRenderU1, mRenderU2, mRenderV1, mRenderV2);
-
-		mMP->renderInterestArea(targetCanvas, frames, mRenderU1, mRenderU2, mRenderV1, mRenderV2);
-		//mMP->projectOnCanvas(targetCanvas, frames);
+			mRenderRegionUpdater(mRenderCenterU, mRenderCenterV, mRenderRange);
+#ifdef OUTPUT_PANO
+		mMP->projectOnCanvas(targetCanvas, frames);
+#else
+		mMP->renderInterestArea(targetCanvas, frames, Point2f(mRenderCenterU, mRenderCenterV), mRenderRange);
+#endif
+		
+		
 		//mVS->stablize(targetCanvas);
 		
 		//Mat canvas;
@@ -109,7 +120,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 
 		(*outputVideo) << targetCanvas;
 	}
-	//mMP->checkFPS();
+	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
 }
 

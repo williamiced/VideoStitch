@@ -25,13 +25,13 @@ class MainWindow : public QMainWindow {
 
     public:
         static void updateImage(Mat img);
-        static void updateRenderRegion(float& u1, float& u2, float& v1, float& v2);
+        static void updateRenderRegion(float& centerU, float& centerV, float& range);
         static int mAnchorX;
         static int mAnchorY;
-        static float mRenderTLx;
-        static float mRenderTLy;
-        static float mFOVx;
-        static float mFOVy;
+        static float mAnchorCenterX;
+        static float mAnchorCenterY;
+        static float mCurrentCenterX;
+        static float mCurrentCenterY;
         explicit MainWindow(QWidget *parent = 0);
         ~MainWindow();
 
