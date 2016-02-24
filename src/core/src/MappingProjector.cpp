@@ -84,32 +84,16 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point
 	boost::timer::cpu_timer boostTimer;
 
 	outImg = Mat(OUTPUT_WINDOW_HEIGHT, OUTPUT_WINDOW_WIDTH, CV_8UC3);
-	float stepY = renderRange / OUTPUT_WINDOW_WIDTH;
+
+	tuneToMap(center);
+
 	for (int y = 0; y < OUTPUT_WINDOW_HEIGHT; y++) {
-		float newV = center.y + (y-2/OUTPUT_WINDOW_HEIGHT)*stepY;
-		float scaleFactor = fabs(cos(newV-M_PI/2));
-		float stepX;
-		if (scaleFactor <= 0.f || stepY / scaleFactor > 2*M_PI/OUTPUT_WINDOW_WIDTH) 
-			stepX = 2*M_PI/OUTPUT_WINDOW_WIDTH;
-		else
-			stepX = stepY / scaleFactor;
-		logMsg(LOG_DEBUG, stringFormat("newV: %f, scaleFactor: %f, stepX: %f, stepY: %f ", newV, scaleFactor, stepX, stepY));
 		for (int x = 0; x < OUTPUT_WINDOW_WIDTH; x++) {
-			float newU = center.x + (x-2/OUTPUT_WINDOW_WIDTH)*stepX;
+			Point2f newPnt;
+			getUVbyAzimuthal( (x - OUTPUT_WINDOW_WIDTH/2.f) / (OUTPUT_WINDOW_WIDTH/2.f), (y - OUTPUT_WINDOW_HEIGHT/2.f) / (OUTPUT_WINDOW_HEIGHT/2.f), center, newPnt);
+			tuneToMap(newPnt);
 
-			while (newV > M_PI) {
-				newV = fabs(M_PI - newV);
-				newU = newU + M_PI;
-			} 
-			while (newV < 0) {
-				newV = fabs(newV);
-				newU = newU + M_PI;
-			}
-
-			while (newU > M_PI) newU = newU - 2*M_PI;
-			while (newU < -M_PI) newU = newU + 2*M_PI;
-			
-			vector<Vec3b> pixels = getPixelsValueByUV( newU, newV, frames );
+			vector<Vec3b> pixels = getPixelsValueByUV( newPnt.x, newPnt.y, frames );
 			if (pixels.size() > 0)
 				outImg.at<Vec3b>(y, x) = pixels[0];
 			else
@@ -120,6 +104,48 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
     mFrameProcessed++;
+}
+
+void MappingProjector::tuneToMap(Point2f& p) {
+	while (p.x < -M_PI)
+		p.x += 2*M_PI;
+	while (p.x > M_PI)
+		p.x -= 2*M_PI;
+	while (p.y < 0)
+		p.y += M_PI;
+	while (p.y > M_PI) 
+		p.y -= M_PI;
+}
+
+void MappingProjector::getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt) {
+	float phi0 = center.y - M_PI/2.f;
+	float lambda0 = center.x + M_PI;
+
+	if (xOffset == 0.f && yOffset == 0.f) {
+		newPnt.x = center.x;
+		newPnt.y = center.y;
+		return;
+	}
+
+	float c = sqrt(xOffset * xOffset + yOffset * yOffset);
+	float cosc = cos(c);
+	float sinc = sqrt(1-cosc*cosc);
+	float sinPhi0 = sin(phi0);
+	float cosPhi0 = sqrt(1-sinPhi0*sinPhi0);
+	float phi = asin( cosc * sinPhi0 + yOffset * sinc * cosPhi0 / c);
+	float lambda;
+
+	if (phi0 == M_PI/2)
+		lambda = lambda0 + atan2(-yOffset, xOffset);
+	else if (phi0 == -M_PI)
+		lambda = lambda0 + atan2(yOffset, xOffset);
+	else
+		lambda = lambda0 + atan2( xOffset * sinc, c * cosPhi0 * cosc - yOffset * sinPhi0 * sinc );
+
+	newPnt.x = lambda - M_PI;
+	newPnt.y = phi + M_PI/2.f;
+	//logMsg(LOG_DEBUG, stringFormat("c = %f, cosc = %f, sinc = %f, sinPhi0 = %f, cosPhi0 = %f, m = %f", c, cosc, sinc, sinPhi0, cosPhi0, cosc * sinPhi0 + yOffset * sinc * cosPhi0 / c) );
+	//logMsg(LOG_DEBUG, stringFormat("(x,y) = (%f, %f), center = (%f, %f), (l, p) = (%f, %f)", xOffset, yOffset, center.x, center.y, newPnt.x, newPnt.y) );
 }
 
 void MappingProjector::defineWindowSize() {

@@ -49,6 +49,8 @@ class MappingProjector {
 		void interpolateUVcheckupTable();
 		void constructUVcheckupTable();
 		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames);
+		void tuneToMap(Point2f& p);
+		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
 		int rad2Deg(float r);
 		float deg2Rad(int d);
 

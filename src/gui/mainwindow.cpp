@@ -83,6 +83,19 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event) {
     mCurrentCenterX = mAnchorCenterX - offsetX;
     mCurrentCenterY = mAnchorCenterY - offsetY;
 
+    while (mCurrentCenterY < 0) {
+        mCurrentCenterY = fabs(mCurrentCenterY);
+        mCurrentCenterX += M_PI;
+    }
+    while (mCurrentCenterY > M_PI) {
+        mCurrentCenterY = fabs(2*M_PI - mCurrentCenterY);
+        mCurrentCenterX += M_PI;
+    }
+    while (mCurrentCenterX < -M_PI)
+        mCurrentCenterX += 2*M_PI;
+    while (mCurrentCenterX > M_PI)
+        mCurrentCenterX -= 2*M_PI;
+
     /*
     if (mRenderTLy > M_PI) {
         mRenderTLy = fabs(M_PI - mRenderTLy);

@@ -23,9 +23,9 @@ VideoStitcher::~VideoStitcher() {
 VideoStitcher::VideoStitcher(int argc, char* argv[]): 
 	mTransmitFunc(nullptr),
 	mRenderRegionUpdater(nullptr),
-	mRenderCenterU(0.f),
-	mRenderCenterV(0.f),
-	mRenderRange(1.f) {
+	mRenderCenterU(-3.f),
+	mRenderCenterV(2.f),
+	mRenderRange(2.f) {
 
 	if ( !checkArguments(argc, argv) )
 		exitWithMsg(E_BAD_ARGUMENTS);
