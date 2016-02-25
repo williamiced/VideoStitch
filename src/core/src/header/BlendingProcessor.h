@@ -21,7 +21,8 @@ class BlendingProcessor {
 
 	public:
 		void doBlending( vector<Mat> warpedImg, Mat& result, Mat& resultMask );
-		BlendingProcessor(  int vc, Rect canvasROI, vector<Point> c, vector<Size> s, vector<Mat> masks);
+		void updateMasks( vector<Mat> masks );
+		BlendingProcessor(  int vc, Rect canvasROI, vector<Point> c, vector<Size> s);
 		~BlendingProcessor();
 };
 

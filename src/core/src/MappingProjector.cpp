@@ -27,6 +27,7 @@ void MappingProjector::setCameraParams(vector<struct MutualProjectParam> params,
 		mK[v].at<float>(1, 2) = static_cast<float> ( mViewSize.height/2 );
 		mK[v].at<float>(2, 2) = 1.f;
 	}
+
 }
 
 void MappingProjector::setCameraParams(vector<Mat> Rs, vector<Mat> Ks) {
@@ -49,7 +50,6 @@ void MappingProjector::calcProjectionMatrix() {
 void MappingProjector::setupWarpers() {
 	for (int v=0; v<mViewCount; v++) {
 		// Use focal length as scale
-		float scale = (mK[v].at<float>(0, 0) + mK[v].at<float>(1, 1))/2 ;
 		mSphericalWarpers.push_back( shared_ptr<PROJECT_METHOD>( new PROJECT_METHOD( 1.f ) ) );
 	}
 }
@@ -76,8 +76,6 @@ void MappingProjector::updateCurrentCanvasROI() {
 
 void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point2f center, float renderRange) {
 	/** 
-		Render area from tl(u1, v1) to br(u2, v2) 
-		Using inverseMap
 		u : [-PI, PI]
 		v : [0, PI]
 	*/
@@ -87,20 +85,30 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point
 
 	tuneToMap(center);
 
+	#pragma omp parallel for collapse(2)
 	for (int y = 0; y < OUTPUT_WINDOW_HEIGHT; y++) {
 		for (int x = 0; x < OUTPUT_WINDOW_WIDTH; x++) {
 			Point2f newPnt;
 			getUVbyAzimuthal( (x - OUTPUT_WINDOW_WIDTH/2.f) / (OUTPUT_WINDOW_WIDTH/2.f), (y - OUTPUT_WINDOW_HEIGHT/2.f) / (OUTPUT_WINDOW_HEIGHT/2.f), center, newPnt);
 			tuneToMap(newPnt);
 
-			vector<Vec3b> pixels = getPixelsValueByUV( newPnt.x, newPnt.y, frames );
-			if (pixels.size() > 0)
-				outImg.at<Vec3b>(y, x) = pixels[0];
-			else
-				outImg.at<Vec3b>(y, x) = Vec3b(0, 0, 0);
+			Mat mask = Mat::zeros(1, mViewCount, CV_8UC1);
+			vector<Vec3b> pixels = getPixelsValueByUV( newPnt.x, newPnt.y, frames, mask );
+			for (int v=0; v<mViewCount; v++) {
+				mWarpedImgs[v].at<Vec3b>(y, x) = pixels[v];
+				mWarpedMasks[v].at<uchar>(y, x) = mask.at<uchar>(0, v);
+			}
 		}
 	}
 	
+	if ( mEP->needFeed() )
+		mEP->feedExposures(mWarpedImgs, mWarpedMasks);
+	mEP->doExposureCompensate(mWarpedImgs, mWarpedMasks);
+
+	mBP->updateMasks(mWarpedMasks);
+	Mat outMask;
+	mBP->doBlending( mWarpedImgs, outImg, outMask );
+
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
     mFrameProcessed++;
@@ -152,6 +160,26 @@ void MappingProjector::defineWindowSize() {
 	mOutputWindowSize = Size(OUTPUT_WINDOW_WIDTH, OUTPUT_WINDOW_HEIGHT);
 }
 
+void MappingProjector::initialPartialData() {
+	mWarpedImgs.resize(mViewCount);
+	for (int v=0; v<mViewCount; v++)
+		mWarpedImgs[v] = Mat(OUTPUT_WINDOW_HEIGHT, OUTPUT_WINDOW_WIDTH, CV_8UC3);
+	
+	mWarpedMasks.resize(mViewCount);
+	for (int v=0; v<mViewCount; v++)
+		mWarpedMasks[v] = Mat(OUTPUT_WINDOW_HEIGHT, OUTPUT_WINDOW_WIDTH, CV_8UC1);
+
+	vector<Point> corners;
+	vector<Size> sizes;
+	for (int v=0; v<mViewCount; v++) {
+		corners.push_back(Point(0, 0));
+		sizes.push_back(Size(OUTPUT_WINDOW_WIDTH, OUTPUT_WINDOW_HEIGHT));
+	}
+
+	mBP = shared_ptr<BlendingProcessor>(new BlendingProcessor( mViewCount, Rect(0, 0, OUTPUT_WINDOW_WIDTH, OUTPUT_WINDOW_HEIGHT), corners, sizes ));
+	mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor( corners, mViewCount) );
+}
+
 Size MappingProjector::getOutputVideoSize() {
 #ifdef OUTPUT_PANO
 	return Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT);
@@ -173,6 +201,7 @@ MappingProjector::MappingProjector(int viewCount, Size viewSize) :
 	mViewCount(viewCount),
 	mViewSize(viewSize) {
 		defineWindowSize();
+		initialPartialData();
 }
 
 void MappingProjector::constructUVcheckupTable() {
@@ -186,6 +215,9 @@ void MappingProjector::constructUVcheckupTable() {
 		mProjMap.push_back(weightMatRow);
 	}
 
+	omp_lock_t writelock;
+	omp_init_lock(&writelock);
+
 	#pragma omp parallel for collapse(3)
 	for (int y=0; y<mViewSize.height; y++) {
 		for (int x=0; x<mViewSize.width; x++) {
@@ -195,11 +227,13 @@ void MappingProjector::constructUVcheckupTable() {
 				int oX = static_cast<int> ( (mapPnt.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
 				int oY = static_cast<int> ( mapPnt.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
 
+				omp_set_lock(&writelock);
 				Mat weightMat = mProjMap[oY][oX];
 				weightMat.at<int>(v, 0) = 1;
 				weightMat.at<int>(v, 1) = x;
 				weightMat.at<int>(v, 2) = y;
 				mProjMap[oY][oX] = weightMat;
+				omp_unset_lock(&writelock);
 			}
 		}
 	}
@@ -263,7 +297,7 @@ void MappingProjector::projectOnCanvas(Mat& canvas, vector<Mat> frames) {
     mFrameProcessed++;
 }
 
-vector<Vec3b> MappingProjector::getPixelsValueByUV(float u, float v, vector<Mat> frames) {
+vector<Vec3b> MappingProjector::getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask) {
 	vector<Vec3b> outputPixels;
 
 	int checkupX = static_cast<int>( (u + M_PI) * OUTPUT_PANO_WIDTH / (2*M_PI) );
@@ -272,11 +306,16 @@ vector<Vec3b> MappingProjector::getPixelsValueByUV(float u, float v, vector<Mat>
 	Mat pixelMat = mProjMap[checkupY][checkupX];
 
 	for (int view=0; view<mViewCount; view++) {
-		if (pixelMat.at<int>(view, 0) == 0)
-			continue;
-		int px = pixelMat.at<int>(view, 1);
-		int py = pixelMat.at<int>(view, 2);
-		outputPixels.push_back( frames[view].at<Vec3b>(py, px) );
+		if (pixelMat.at<int>(view, 0) == 0) {
+			outputPixels.push_back( Vec3b(0, 0, 0) );
+			mask.at<uchar>(0, view) = 0;
+		}
+		else {
+			int px = pixelMat.at<int>(view, 1);
+			int py = pixelMat.at<int>(view, 2);
+			outputPixels.push_back( frames[view].at<Vec3b>(py, px) );
+			mask.at<uchar>(0, view) = 1;
+		}
 	}
 	
 	return outputPixels;

@@ -13,7 +13,20 @@ void BlendingProcessor::doBlending( vector<Mat> warpedImg, Mat& result, Mat& res
     result.convertTo(result, CV_8U);
 }
 
-BlendingProcessor::BlendingProcessor( int vc, Rect canvasROI, vector<Point> c, vector<Size> s, vector<Mat> masks) : mViewCount(vc), mCanvasROI(canvasROI), mCorners(c), mSizes(s) {
+void BlendingProcessor::updateMasks(vector<Mat> masks) {
+    mDilateMasks.resize(mViewCount);
+    // Save dilate masks
+    for (int v=0; v<mViewCount; v++) {
+        Mat mask_warped = masks[v].clone();
+        Mat dilated_mask, seam_mask;
+        dilate(mask_warped, dilated_mask, Mat());
+        cv::resize(dilated_mask, seam_mask, mask_warped.size());
+        mask_warped = seam_mask & mask_warped;
+        mDilateMasks[v] = mask_warped;
+    }
+}
+
+BlendingProcessor::BlendingProcessor( int vc, Rect canvasROI, vector<Point> c, vector<Size> s) : mViewCount(vc), mCanvasROI(canvasROI), mCorners(c), mSizes(s) {
 	mBlender = cv::detail::Blender::createDefault(cv::detail::Blender::FEATHER, true);
 
 	// Calculate blending strength
@@ -23,16 +36,6 @@ BlendingProcessor::BlendingProcessor( int vc, Rect canvasROI, vector<Point> c, v
     //mb->setNumBands(static_cast<int>(ceil(log( blendWidth ) / log(2.)) - 1.));
     cv::detail::FeatherBlender* fb = dynamic_cast<cv::detail::FeatherBlender*>( mBlender.get() );
     fb->setSharpness( 1.f/blendWidth );
-
-    // Save dilate masks
-    for (int v=0; v<mViewCount; v++) {
-    	Mat mask_warped = masks[v].clone();
-    	Mat dilated_mask, seam_mask;
-    	dilate(mask_warped, dilated_mask, Mat());
-        cv::resize(dilated_mask, seam_mask, mask_warped.size());
-        mask_warped = seam_mask & mask_warped;
-        mDilateMasks.push_back(mask_warped);
-    }
 }
 
 BlendingProcessor::~BlendingProcessor() {

@@ -13,13 +13,14 @@ class ExposureProcessor {
 	private:
 		cv::Ptr<cv::detail::ExposureCompensator> mEC;
 		vector<Point> mCorners;
-		vector<Mat> mMasks;
 		int mViewCount;
+		bool mNeedFeed;
 
 	public:
-		void feedExposures(vector<Mat> warpedImg);
-		void doExposureCompensate(vector<Mat> warpedImg);
-		ExposureProcessor( vector<Point> c, vector<Mat> m, int vc);
+		void feedExposures(vector<Mat> warpedImg, vector<Mat> warpedMasks);
+		void doExposureCompensate(vector<Mat> warpedImg, vector<Mat> warpedMasks);
+		bool needFeed();
+		ExposureProcessor( vector<Point> c, int vc);
 		~ExposureProcessor();
 };
 

@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <iterator>
 #include <set>
-#include <stack>
+#include <map>
 #include <boost/timer/timer.hpp>
 #include <omp.h>
 #include <header/ExposureProcessor.h>
@@ -41,14 +41,19 @@ class MappingProjector {
 		vector<Rect> mMapROIs;
 		vector< vector<Mat> > mProjMap;
 		Rect mCanvasROI;
+		vector<Mat> mWarpedImgs;
+		vector<Mat> mWarpedMasks;
+		map<double, double> mCosMap;
+		map<double, double> mSinMap;
 
 		void setupWarpers();
 		void buildMapsForViews();
 		void updateCurrentCanvasROI();
 		void defineWindowSize();
+		void initialPartialData();
 		void interpolateUVcheckupTable();
 		void constructUVcheckupTable();
-		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames);
+		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask);
 		void tuneToMap(Point2f& p);
 		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
 		int rad2Deg(float r);

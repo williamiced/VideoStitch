@@ -1,7 +1,7 @@
 //#define USE_LENS_UNDISTORT
 #define PROJECT_METHOD cv::detail::SphericalWarper
 
-#define VIDEO_CONTAINER_SIZE 30
+#define VIDEO_CONTAINER_SIZE 50
 
 #define OUTPUT_WINDOW_WIDTH 500
 #define OUTPUT_WINDOW_HEIGHT 500
@@ -13,7 +13,6 @@
 //#define OUTPUT_PANO
 #define USE_EXPOSURE_COMPENSATOR
 #define USE_BLENDER
-#define USE_SMALLER_CANVAS 4
 
 /*
 #define SURF_MIN_HESSIAN 400
