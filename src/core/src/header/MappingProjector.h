@@ -36,23 +36,16 @@ class MappingProjector {
 		vector< shared_ptr<PROJECT_METHOD> > mSphericalWarpers;
 		vector< Mat > mR;
 		vector< Mat > mK;
-		vector<Mat> mUxMaps;
-		vector<Mat> mUyMaps;
-		vector<Rect> mMapROIs;
 		vector< vector<Mat> > mProjMap;
-		Rect mCanvasROI;
 		vector<Mat> mWarpedImgs;
 		vector<Mat> mWarpedMasks;
-		map<double, double> mCosMap;
-		map<double, double> mSinMap;
 
 		void setupWarpers();
-		void buildMapsForViews();
-		void updateCurrentCanvasROI();
 		void defineWindowSize();
-		void initialPartialData();
+		void initialData();
 		void interpolateUVcheckupTable();
 		void constructUVcheckupTable();
+		void constructWarpedMasks();
 		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask);
 		void tuneToMap(Point2f& p);
 		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
@@ -62,6 +55,7 @@ class MappingProjector {
 	public:
 		MappingProjector(int viewCount, Size viewSize);
 		void renderInterestArea(Mat& outImg, vector<Mat> frames, Point2f center, float renderRange);
+		void renderPartialPano(Mat& outImg, vector<Mat> frames);
 		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 		void calcProjectionMatrix();
 		Size getOutputVideoSize();

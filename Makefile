@@ -38,7 +38,7 @@ makeObj: $(OBJ_FILES)
 
 $(OBJ)/%.o: $(SRC)/%.cpp $(SRC)/header/%.h
 	@mkdir -p $(OBJ)
-	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"
+	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"	
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 
 
 VideoStitch: $(OBJ_FILES) 
@@ -66,8 +66,8 @@ dumper:
 	#$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump3
 
 clean:
-	-rm -r $(BIN)/VideoStitch
-	-rm -rf obj/*.o
+	- rm -r $(BIN)/VideoStitch
+	- rm -rf obj/*.o
 
 CC_FLAGS += -MMD
 -include $(OBJFILES:.o=.d)
