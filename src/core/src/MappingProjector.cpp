@@ -99,10 +99,10 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames) {
 	boost::timer::cpu_timer boostTimer;
 
 	outImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
-	int y1 = outImg.rows/3;
-	int y2 = outImg.rows*2/3;
-	int x1 = outImg.cols/3;
-	int x2 = outImg.cols*2/3;
+	int y1 = outImg.rows/4;
+	int y2 = outImg.rows*3/4;
+	int x1 = outImg.cols/4;
+	int x2 = outImg.cols*3/4;
 
 	for (int v=0; v<mViewCount; v++)
 		mWarpedMasks[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC1);
@@ -122,7 +122,7 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames) {
 			}
 		}
 	}
-	
+
 	if ( mEP->needFeed() )
 		mEP->feedExposures(mWarpedImgs, mWarpedMasks);
 	mEP->doExposureCompensate(mWarpedImgs, mWarpedMasks);

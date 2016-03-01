@@ -9,7 +9,7 @@ BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
 
 # For OpenCV support
 CFLAGS+=`pkg-config --cflags opencv` -fopenmp
-LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64 -lboost_system -lboost_timer -lgomp
+LDFLAGS+=`pkg-config --libs opencv` -L/usr/local/cuda-7.5/lib64 -lboost_system -lboost_timer -lgomp -lglut -lGL -lGLEW -lGLU  -pthread
 
 # Paths
 SRC=src/core/src
@@ -45,6 +45,10 @@ VideoStitch: $(OBJ_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS)
 
+PR: $(OBJ_FILES)
+	@echo "$(cccyan)[Run Link compile]$(ccend)"
+	$(CC) $? -I$(SRC) src/opengl/PartialRenderGUI.cpp -o $(BIN)/$@ $(LDFLAGS)
+
 CameraCalibrator:
 	@echo "$(cccyan)[Ganerate camera calibrator]$(ccend)"
 	$(CC) -o $(BIN)/$@ tools/calibration/CameraCalibrator.cpp $(LDFLAGS)
@@ -57,6 +61,9 @@ run:
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi
+
+runPR:
+	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml
