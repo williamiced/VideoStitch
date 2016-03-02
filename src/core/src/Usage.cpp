@@ -71,3 +71,14 @@ Mat getXMatrix(double gamma) {
     x.at<float>(2, 2) = cosx;
     return x;
 }
+
+void segFaultHandler (int sig) {
+  void *array[10];
+  size_t size;
+
+  size = backtrace(array, 10);
+
+  logMsg(LOG_ERROR, stringFormat("Error: signal %d:\n", sig));
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}

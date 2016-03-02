@@ -110,7 +110,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		else if (STRATEGY_OUTPUT == OUTPUT_ONLY_WINDOW)
 			mMP->renderInterestArea(targetCanvas, frames, Point2f(mRenderCenterU, mRenderCenterV), mRenderRange);
 		else if (STRATEGY_OUTPUT == OUTPUT_PARTIAL_PANO)
-			mMP->renderPartialPano(targetCanvas, frames);
+			mMP->renderPartialPano(targetCanvas, frames, Rect(0, 0, OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT) );
+			//mMP->renderPartialPano(targetCanvas, frames, Rect(OUTPUT_PANO_WIDTH/4, OUTPUT_PANO_HEIGHT/4, OUTPUT_PANO_WIDTH/2, OUTPUT_PANO_HEIGHT/2) );
 		
 		//mVS->stablize(targetCanvas);
 		
@@ -120,6 +121,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			mTransmitFunc(targetCanvas);
 
 		(*outputVideo) << targetCanvas;
+		//imwrite("tmp.png", targetCanvas);
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");

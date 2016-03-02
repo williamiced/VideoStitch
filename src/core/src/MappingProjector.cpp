@@ -95,19 +95,19 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point
     mFrameProcessed++;
 }
 
-void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames) {
+void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea) {
 	boost::timer::cpu_timer boostTimer;
 
 	outImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
-	int y1 = outImg.rows/4;
-	int y2 = outImg.rows*3/4;
-	int x1 = outImg.cols/4;
-	int x2 = outImg.cols*3/4;
+	int y1 = renderArea.tl().y;
+	int y2 = renderArea.tl().y + renderArea.size().height;
+	int x1 = renderArea.tl().x;
+	int x2 = renderArea.tl().x + renderArea.size().width;
 
 	for (int v=0; v<mViewCount; v++)
 		mWarpedMasks[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC1);
 
-	#pragma omp parallel for collapse(3)
+	#pragma omp parallel for collapse(2)
 	for (int y=y1; y<y2; y++) {
 		for (int x=x1; x<x2; x++) {
 			for (int v=0; v<mViewCount; v++) {

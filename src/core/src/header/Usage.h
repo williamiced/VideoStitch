@@ -4,6 +4,10 @@
 #include <iostream>
 #include <string>
 #include <ctime> 
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <stdarg.h>  // For va_start, etc.
 #include <memory>    // For std::unique_ptr
 #include <boost/assign/list_of.hpp>
@@ -50,5 +54,6 @@ string stringFormat(const string fmt_str, ...);
 Mat getZMatrix(double alpha);
 Mat getYMatrix(double beta);
 Mat getXMatrix(double gamma);
+void segFaultHandler (int sig);
 
 #endif // _H_USAGE
