@@ -36,16 +36,17 @@ class MappingProjector {
 		vector< shared_ptr<PROJECT_METHOD> > mSphericalWarpers;
 		vector< Mat > mR;
 		vector< Mat > mK;
-		vector< vector<Mat> > mProjMap;
 		vector<Mat> mWarpedImgs;
-		vector<Mat> mWarpedMasks;
+		vector<Mat> mProjMapX;
+		vector<Mat> mProjMapY;
+		vector<Mat> mProjMasks;
 
 		void setupWarpers();
 		void defineWindowSize();
 		void initialData();
 		void interpolateUVcheckupTable();
 		void constructUVcheckupTable();
-		void constructWarpedMasks();
+		void constructBlendingWeightMap();
 		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask);
 		void tuneToMap(Point2f& p);
 		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
