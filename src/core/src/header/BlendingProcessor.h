@@ -16,24 +16,23 @@ class BlendingProcessor : public cv::detail::Blender {
 	private:
 		int mViewCount;
 		Rect mCanvasROI;
-		vector<Point> mCorners;
-		vector<Size> mSizes;
 		vector<Mat> mDilateMasks;
+		vector<Mat> mWeightMaps;
 
 	private:
 		float sharpness_;
-    	UMat weight_map_;
     	UMat dst_weight_map_;
 
 	public:
-		void doBlending( vector<Mat> warpedImg, Mat& result, Mat& resultMask );
-		void updateMasks( vector<Mat> masks );
-		void feed (InputArray _img, InputArray mask, Point tl);
 		void prepare(Rect dst_roi);
+		void feed (InputArray _img, InputArray mask, Point tl);
+		void feeds(vector<Mat> imgs);
 		void blend(InputOutputArray dst, InputOutputArray dst_mask);
 		void setSharpness(float val) { sharpness_ = val; }
-		
-		BlendingProcessor(  int vc, Rect canvasROI, vector<Point> c, vector<Size> s);
+		void genWeightMapByMasks(vector<Mat> masks);
+		void preProcess(Rect dst_roi, vector<Mat> imgs);
+
+		BlendingProcessor( int vc, Rect canvasROI );
 		~BlendingProcessor();
 };
 

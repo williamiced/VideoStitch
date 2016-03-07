@@ -106,7 +106,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			mRenderRegionUpdater(mRenderCenterU, mRenderCenterV, mRenderRange);
 
 		if (STRATEGY_OUTPUT == OUTPUT_FULL_PANO)
-			mMP->projectOnCanvas(targetCanvas, frames);
+			mMP->renderPartialPano(targetCanvas, frames, Rect(0, 0, OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT) );
 		else if (STRATEGY_OUTPUT == OUTPUT_ONLY_WINDOW)
 			mMP->renderInterestArea(targetCanvas, frames, Point2f(mRenderCenterU, mRenderCenterV), mRenderRange);
 		else if (STRATEGY_OUTPUT == OUTPUT_PARTIAL_PANO)

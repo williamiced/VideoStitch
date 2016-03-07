@@ -57,7 +57,6 @@ class MappingProjector {
 		MappingProjector(int viewCount, Size viewSize);
 		void renderInterestArea(Mat& outImg, vector<Mat> frames, Point2f center, float renderRange);
 		void renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea);
-		void projectOnCanvas(Mat& canvas, vector<Mat> frames);
 		void calcProjectionMatrix();
 		Size getOutputVideoSize();
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);
