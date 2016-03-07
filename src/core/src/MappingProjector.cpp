@@ -192,8 +192,12 @@ void MappingProjector::initialData() {
 	for (int v=0; v<mViewCount; v++)
 		mWarpedImgs[v] = Mat::zeros(h, w, CV_8UC3);
 	
+	vector<Point> corners;
+	for (int v=0; v<mViewCount; v++)
+		corners.push_back(Point(0, 0));
+
 	mBP = shared_ptr<BlendingProcessor>( new BlendingProcessor( mViewCount, Rect(0, 0, w, h) ) );
-	//mEP = shared_ptr<ExposureProcessor>(new ExposureProcessor( corners, mViewCount) );
+	mEP = shared_ptr<ExposureProcessor>( new ExposureProcessor( corners, mViewCount) );
 }
 
 Size MappingProjector::getOutputVideoSize() {
@@ -285,27 +289,14 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 		}
 	}
 
+	if ( mEP->needFeed() )
+		mEP->feedExposures(mWarpedImgs, mProjMasks);
+	mEP->doExposureCompensate(mWarpedImgs, mProjMasks);
+
 	mBP->preProcess(renderArea, mWarpedImgs);
 	Mat outMask;
 	mBP->blend(outImg, outMask);
-	
-	//outImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_16SC3);
 	outImg.convertTo(outImg, CV_8UC3);
-	/*
-	if ( mEP->needFeed() )
-		mEP->feedExposures(mWarpedImgs, mWarpedMasks);
-	mEP->doExposureCompensate(mWarpedImgs, mWarpedMasks);
-	*/
-
-	/*
-
-	BlendingProcessor* BP = new BlendingProcessor(mViewCount, Rect(0, 0, x2-x1, y2-y1), corners, sizes);
-	BP->updateMasks( warpedMasks );
-	Mat outMask;
-	Mat tmpImg;
-	BP->doBlending( warpedImgs, tmpImg, outMask );
-	delete BP;
-	*/
 
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
