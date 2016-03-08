@@ -16,6 +16,15 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
 
+#ifdef CARE_TIME
+	#define SETUP_TIMER cout << __FUNCTION__ << endl;boost::timer::auto_cpu_timer boostTimer;
+#else
+    #define SETUP_TIMER ;
+#endif
+
+#define unsafe(i)  \
+        ( (i) >= 0 ? (i) : -(i) )
+
 using namespace cv;
 using namespace std;
 using boost::assign::map_list_of;

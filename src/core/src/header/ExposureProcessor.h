@@ -4,17 +4,19 @@
 #include <header/Params.h>
 #include <header/Usage.h>
 #include <omp.h>
+#include <boost/timer/timer.hpp>
 #include "opencv2/stitching/detail/exposure_compensate.hpp"
 #include "opencv2/stitching/detail/util.hpp"
 #include "opencv2/core/core.hpp"
 #include "opencv2/core/cuda.hpp"
 #include "opencv2/cudaarithm.hpp"
 
+#include <typeinfo>
+
 using namespace cv::cuda;
 
 class ExposureProcessor : public cv::detail::ExposureCompensator {
 	private:
-		cv::Ptr<cv::detail::ExposureCompensator> mEC;
 		vector<Point> mCorners;
 		int mViewCount;
 		bool mNeedFeed;

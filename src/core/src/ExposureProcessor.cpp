@@ -1,6 +1,8 @@
 #include <header/ExposureProcessor.h>
 
 void ExposureProcessor::doExposureCompensate( vector<Mat> warpedImg, vector<Mat> warpedMasks) {
+    SETUP_TIMER
+
 	#pragma omp parallel for collapse(1)
 	for (int v=0; v<mViewCount; v++) 
 		apply(v, mCorners[v], warpedImg[v], warpedMasks[v]);
@@ -104,14 +106,13 @@ void ExposureProcessor::feed(const std::vector<Point> &corners, const std::vecto
 }
 
 void ExposureProcessor::apply(int index, Point /*corner*/, InputOutputArray image, InputArray /*mask*/) {
-	/*
-	GpuMat srcImg(image);
+    Mat src = image.getMat().reshape(1);
+    GpuMat srcImg( src );
 	double target = gains_(index, 0);
-
 	cv::cuda::multiply(srcImg, target, srcImg);
-	srcImg.download(image);
-	*/
-    multiply(image, gains_(index, 0), image);
+	srcImg.download(src);
+    //double target = gains_(index, 0);
+    //cv::multiply(image, target, image);
 }
 
 std::vector<double> ExposureProcessor::gains() const {

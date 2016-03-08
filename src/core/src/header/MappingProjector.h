@@ -46,7 +46,6 @@ class MappingProjector {
 		void initialData();
 		void interpolateUVcheckupTable();
 		void constructUVcheckupTable();
-		void constructBlendingWeightMap();
 		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask);
 		void tuneToMap(Point2f& p);
 		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);

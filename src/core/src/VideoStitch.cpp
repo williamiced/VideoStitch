@@ -71,8 +71,9 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			2. Undistort
 			3. Use projection matrixs to project to target canvas
 			4. Do exposure compensation
-			5. Do stablize
-			6. Ouput
+			5. Do blending
+			6. Do stablize
+			7. Ouput
 	*/
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 	double videoFPS = mVL->getVideoFPS();
@@ -110,18 +111,13 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		else if (STRATEGY_OUTPUT == OUTPUT_ONLY_WINDOW)
 			mMP->renderInterestArea(targetCanvas, frames, Point2f(mRenderCenterU, mRenderCenterV), mRenderRange);
 		else if (STRATEGY_OUTPUT == OUTPUT_PARTIAL_PANO)
-			//mMP->renderPartialPano(targetCanvas, frames, Rect(0, 0, OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT) );
 			mMP->renderPartialPano(targetCanvas, frames, Rect(OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3, OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3) );
-		
 		//mVS->stablize(targetCanvas);
 		
-		//Mat canvas;
-		//targetCanvas.download(canvas);
 		if (mTransmitFunc != nullptr)
 			mTransmitFunc(targetCanvas);
 
 		(*outputVideo) << targetCanvas;
-		//imwrite("tmp.png", targetCanvas);
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");

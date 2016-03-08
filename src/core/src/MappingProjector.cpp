@@ -115,26 +115,6 @@ void MappingProjector::interpolateUVcheckupTable() {
 	}
 }
 
-void MappingProjector::constructBlendingWeightMap() {
-	/*
-	#pragma omp parallel for collapse(2)
-	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
-		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
-			for (int v=0; v<mViewCount; v++) {
-				if (mProjMap[y][x].at<int>(v, 0) == 0) {
-					mWarpedMasks[v].at<uchar>(y, x) = 0;
-					continue;
-				}
-				mWarpedMasks[v].at<uchar>(y, x) = 255;
-				int px = mProjMap[y][x].at<int>(v, 1) ;
-				int py = mProjMap[y][x].at<int>(v, 2) ;
-				mWarpedImgs[v].at<Vec3b>(y, x) = frames[v].at<Vec3b>(py, px);
-			}
-		}
-	}
-	*/
-}
-
 void MappingProjector::tuneToMap(Point2f& p) {
 	while (p.x < -M_PI)
 		p.x += 2*M_PI;
@@ -249,15 +229,6 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point
 		}
 	}
 	
-	/*
-	if ( mEP->needFeed() )
-		mEP->feedExposures(mWarpedImgs, mProjMasks);
-	mEP->doExposureCompensate(mWarpedImgs, mProjMasks);
-
-	mBP->updateMasks(mProjMasks);
-	Mat outMask;
-	mBP->doBlending( mWarpedImgs, outImg, outMask );
-	*/
 
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
@@ -292,6 +263,9 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 	if ( mEP->needFeed() )
 		mEP->feedExposures(mWarpedImgs, mProjMasks);
 	mEP->doExposureCompensate(mWarpedImgs, mProjMasks);
+
+	imwrite("hasDownload.png", mWarpedImgs[0]);
+	exit(0);
 
 	mBP->preProcess(renderArea, mWarpedImgs);
 	Mat outMask;
