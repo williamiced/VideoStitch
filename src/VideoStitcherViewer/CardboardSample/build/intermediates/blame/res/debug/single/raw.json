@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/raw/passthrough_fragment.shader",
+        "source": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/src/main/res/raw/passthrough_fragment.shader"
+    },
+    {
+        "merged": "/home/wlee/Libraries/cardboard-java/CardboardSample/build/intermediates/res/merged/debug/raw/passthrough_fragment.shader",
+        "source": "/home/wlee/Libraries/cardboard-java/CardboardSample/src/main/res/raw/passthrough_fragment.shader"
+    },
+    {
+        "merged": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/raw/grid_fragment.shader",
+        "source": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/src/main/res/raw/grid_fragment.shader"
+    },
+    {
+        "merged": "/home/wlee/Libraries/cardboard-java/CardboardSample/build/intermediates/res/merged/debug/raw/light_vertex.shader",
+        "source": "/home/wlee/Libraries/cardboard-java/CardboardSample/src/main/res/raw/light_vertex.shader"
+    },
+    {
+        "merged": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/raw/light_vertex.shader",
+        "source": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/src/main/res/raw/light_vertex.shader"
+    },
+    {
+        "merged": "/home/wlee/Libraries/cardboard-java/CardboardSample/build/intermediates/res/merged/debug/raw/grid_fragment.shader",
+        "source": "/home/wlee/Libraries/cardboard-java/CardboardSample/src/main/res/raw/grid_fragment.shader"
+    }
+]

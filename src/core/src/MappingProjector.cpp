@@ -262,10 +262,7 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 
 	if ( mEP->needFeed() )
 		mEP->feedExposures(mWarpedImgs, mProjMasks);
-	mEP->doExposureCompensate(mWarpedImgs, mProjMasks);
-
-	imwrite("hasDownload.png", mWarpedImgs[0]);
-	exit(0);
+	mEP->doExposureCompensate(mWarpedImgs, mProjMasks, renderArea);
 
 	mBP->preProcess(renderArea, mWarpedImgs);
 	Mat outMask;

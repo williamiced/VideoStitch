@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/CardboardSample/CardboardSample.iml" filepath="$PROJECT_DIR$/CardboardSample/CardboardSample.iml" />
+      <module fileurl="file://$PROJECT_DIR$/VideoStitcherViewer.iml" filepath="$PROJECT_DIR$/VideoStitcherViewer.iml" />
+    </modules>
+  </component>
+</project>

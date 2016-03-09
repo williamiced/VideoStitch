@@ -93,12 +93,8 @@ void drawScene() {
 
     gluLookAt(eye_x, eye_y, eye_z, center_x, center_y, center_z, up_x, up_y, up_z);
 
-    //glRotatef(gRoll, 0.0f, 0.0f, 1.0f);
     glRotatef(90, 1.0f, 0.0f, 0.0f);
-    //glRotatef(gPitch, 1.0f, 0.0f, 0.0f);
-    //glRotatef(gYaw, 0.0f, 1.0f, 0.0f);
     
-
     glTranslatef(0.0f, 0.0f, 0.f);
 
     glEnable(GL_TEXTURE_2D);
@@ -106,24 +102,11 @@ void drawScene() {
 
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT, GL_BGR, GL_UNSIGNED_BYTE, gLatestImg.data);
 
-    //Bottom
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    //glRotatef(gYaw, 1.0f, 0.0f, 0.0f);
-    //glRotatef(gPitch, 0.0f, 1.0f, 0.0f);
-    //glRotatef(roll, 0.0f, 0.0f, 1.0f);
-
-    //glRotatef(gPitch, 0.f, 0.f, 1.f);
-    //glRotatef(gYaw, 1.f, 0.f, 0.f);
     gluQuadricTexture(gQuad, GLU_TRUE);
     gluSphere(gQuad, 128, 20, 20);
-
-
-    //glm::tmat4x4<float> yprMat = glm::yawPitchRoll  (gYaw, gPitch, gRoll);
-
 
     glutSwapBuffers();
 }

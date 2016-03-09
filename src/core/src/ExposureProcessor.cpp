@@ -1,11 +1,11 @@
 #include <header/ExposureProcessor.h>
 
-void ExposureProcessor::doExposureCompensate( vector<Mat> warpedImg, vector<Mat> warpedMasks) {
+void ExposureProcessor::doExposureCompensate( vector<Mat> warpedImg, vector<Mat> warpedMasks, Rect renderArea) {
     SETUP_TIMER
 
 	#pragma omp parallel for collapse(1)
 	for (int v=0; v<mViewCount; v++) 
-		apply(v, mCorners[v], warpedImg[v], warpedMasks[v]);
+		apply(v, mCorners[v], warpedImg[v](renderArea), warpedMasks[v]);
 }
 
 void ExposureProcessor::feedExposures(vector<Mat> warpedImg, vector<Mat> warpedMasks) {

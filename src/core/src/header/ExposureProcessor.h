@@ -30,7 +30,7 @@ class ExposureProcessor : public cv::detail::ExposureCompensator {
     	void apply(int index, Point corner, InputOutputArray image, InputArray mask);
     	std::vector<double> gains() const;
 		void feedExposures(vector<Mat> warpedImg, vector<Mat> warpedMasks);
-		void doExposureCompensate(vector<Mat> warpedImg, vector<Mat> warpedMasks);
+		void doExposureCompensate(vector<Mat> warpedImg, vector<Mat> warpedMasks, Rect renderArea);
 		bool needFeed();
 		ExposureProcessor( vector<Point> c, int vc);
 		~ExposureProcessor();
