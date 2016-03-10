@@ -1,5 +1,9 @@
 [
     {
+        "merged": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/layout/common_ui.xml",
+        "source": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/src/main/res/layout/common_ui.xml"
+    },
+    {
         "merged": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/layout/common_ui.xml",
         "source": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/src/main/res/layout/common_ui.xml"
     },

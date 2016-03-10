@@ -22,9 +22,11 @@ public final class R {
         public static final int common_ui=0x7f030000;
     }
     public static final class raw {
-        public static final int grid_fragment=0x7f040000;
-        public static final int light_vertex=0x7f040001;
-        public static final int passthrough_fragment=0x7f040002;
+        public static final int fragment_sphere=0x7f040000;
+        public static final int grid_fragment=0x7f040001;
+        public static final int light_vertex=0x7f040002;
+        public static final int passthrough_fragment=0x7f040003;
+        public static final int vertex_sphere=0x7f040004;
     }
     public static final class string {
         public static final int app_name=0x7f050000;

@@ -4,6 +4,10 @@
         "source": "/home/wlee/Libraries/cardboard-java/CardboardSample/src/main/res/drawable-xhdpi/ic_launcher.png"
     },
     {
+        "merged": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/drawable-xhdpi-v4/ic_launcher.png",
+        "source": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/src/main/res/drawable-xhdpi/ic_launcher.png"
+    },
+    {
         "merged": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/drawable-xhdpi-v4/ic_launcher.png",
         "source": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/src/main/res/drawable-xhdpi/ic_launcher.png"
     }

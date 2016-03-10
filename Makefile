@@ -48,6 +48,9 @@ VideoStitch: $(OBJ_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS)
 
+bauzi: 
+	$(CC) obj/Usage.o $? -I$(SRC) -Itools/BauziCalibration tools/BauziCalibration/BauziCalibrator.cpp -o $(BIN)/$@ $(LDFLAGS)
+
 PR: $(OBJ_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? -I$(SRC) src/opengl/PartialRenderGUI.cpp -o $(BIN)/$@ $(LDFLAGS)
@@ -58,7 +61,7 @@ CameraCalibrator:
 
 ImagesDumper:
 	@echo "$(cccyan)[Ganerate images dumper]$(ccend)"
-	$(CC) obj/Usage.o -o $(BIN)/$@ tools/imagesDumper/ImagesDumper.cpp $(LDFLAGS)
+	$(CC) -I$(SRC) obj/Usage.o -o $(BIN)/$@ tools/imagesDumper/ImagesDumper.cpp $(LDFLAGS)
 
 run:
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
@@ -68,11 +71,15 @@ run:
 runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi
 
+runBauzi:
+	$(BIN)/bauzi --input data/Bauzi/inputImage.txt --iter 10
+
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml
 
 dumper:
-	$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump4
+	$(BIN)/ImagesDumper data/Bauzi/inputVideo.txt data/Library20160216/pattern.png 0 1 1 data/Bauzi/raw/
+	#$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump4
 	#$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump3
 
 clean:
