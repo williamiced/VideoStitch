@@ -1,5 +1,22 @@
 #include <header/Usage.h>
 
+char* getCmdOption(char** begin, char** end, const std::string & option) {
+    char ** itr = std::find(begin, end, option);
+    if (itr != end && ++itr != end) 
+        return *itr;
+    return 0;
+}
+
+bool cmdOptionExists(char** begin, char** end, const std::string& option) {
+    return std::find(begin, end, option) != end;
+}
+
+bool checkArguments(int argc, char** argv) {
+    if ( !cmdOptionExists(argv, argv + argc, "--input") )
+        return false;
+    return true;
+}
+
 string stringFormat(const string fmt_str, ...) {
     int final_n, n = ((int)fmt_str.size()) * 2; /* Reserve two times as much as the length of the fmt_str */
     string str;
@@ -34,6 +51,18 @@ void logMsg(logTypeEnum type, string msg) {
         cout << "[ ERROR ] " << msg << "\t\t\t - " << asctime(localtime(&result));
     else 
         cerr << "[ DEBUG ] " << msg << "\t\t\t - " << asctime(localtime(&result));
+}
+
+Mat getRotationMatrix(double yaw, double pitch, double roll) {
+    double alpha = yaw;
+    double beta = pitch;
+    double gamma = roll;
+
+    // Take camera as reference coordinate system, around: x-axis -> pitch, y-axis -> yaw, z->axis -> roll
+    Mat Rz = getZMatrix(gamma);
+    Mat Ry = getYMatrix(alpha);
+    Mat Rx = getXMatrix(beta);
+    return Ry * Rx * Rz;
 }
 
 Mat getZMatrix(double alpha) {
@@ -81,4 +110,110 @@ void segFaultHandler (int sig) {
   logMsg(LOG_ERROR, stringFormat("Error: signal %d:\n", sig));
   backtrace_symbols_fd(array, size, STDERR_FILENO);
   exit(1);
+}
+
+ExtrinsicParam::ExtrinsicParam() {
+    R.set(0.f, 0.f, 0.f);
+    T.set(0.f, 0.f, 0.f);
+}
+
+ExtrinsicParam::ExtrinsicParam(double y, double p, double r, double tx, double ty, double tz) {
+    R.set(y, p, r);
+    T.set(tx, ty, tz);
+}
+
+double ExtrinsicParam::get_RMat_Value(int angle){ 
+    if(angle == YAW){
+        return R.get_yaw();
+    }
+    else if(angle == ROLL){
+        return R.get_roll();
+    }
+    else if(angle == PITCH){
+        return R.get_pitch();
+    }
+    else {
+        logMsg(LOG_WARNING, stringFormat("Wrong angle: %d", angle));
+        return -1.f;
+    }
+}
+
+void ExtrinsicParam::set_RMat_Value(int angle , double value){ 
+    if(angle == YAW){
+        R.set_yaw(value);
+    }
+    else if(angle == ROLL){
+        R.set_roll(value);
+    }
+    else if(angle == PITCH){
+        R.set_pitch(value);
+    }
+}
+
+double ExtrinsicParam::get_TMat_Value(int direction){ 
+    if(direction == X){
+        return T.get_x();
+    }
+    else if(direction == Y){
+        return T.get_y();
+    }
+    else if(direction == Z){
+        return T.get_z();
+    }
+    else {
+        logMsg(LOG_WARNING, stringFormat("Wrong direction: %d", direction));
+        return -1.f;
+    }
+}
+
+void ExtrinsicParam::set_TMat_Value(int direction , double value){ 
+    if(direction == X){
+        T.set_x(value);
+    }
+    else if(direction == Y){
+        T.set_y(value);
+    }
+    else if(direction == Z){
+        T.set_z(value);
+    }
+}
+
+ExtrinsicParamSet::ExtrinsicParamSet(int num_camera) {
+    ExtrinsicParam temp;
+    for(int i=0 ; i < num_camera ; i+=1){
+        params.push_back(temp);
+    }
+}
+
+void ExtrinsicParamSet::setParam(int index, ExtrinsicParam param) {
+    params[index] = param;
+}
+
+void ExtrinsicParamSet::generatePerturbation(int num_random, vector<ExtrinsicParamSet>& candidatePool) {
+    for(int i = 0 ; i < num_random ; i +=1){
+        int rand_angle = (int)( rand() % 3 );
+        int rand_direction = (int)( rand() % 3 );
+        int rand_choose = (int)( rand() % params.size() );
+        double rand_angle_value = rand() / 1000000000000.0;
+        double rand_shift_value = rand() / 1000000000000.0;
+
+        ExtrinsicParamSet cloneEP = clone();
+        ExtrinsicParam temp = params[rand_choose];
+        temp.set_RMat_Value(rand_angle , temp.get_RMat_Value(rand_angle) + rand_angle_value);
+        temp.set_TMat_Value(rand_direction , temp.get_TMat_Value(rand_direction) + rand_shift_value);
+        cloneEP.setParam(rand_choose, temp);
+
+        candidatePool.push_back(cloneEP);
+    }
+
+    logMsg(LOG_DEBUG, stringFormat("Generate %d perturbation", candidatePool.size()));
+}
+
+ExtrinsicParamSet ExtrinsicParamSet::clone() {
+    int size = params.size();
+    ExtrinsicParamSet cloneSet(size);
+    for (int i=0; i<size; i++) {
+        cloneSet.setParam(i, params[i]);
+    }
+    return cloneSet;
 }

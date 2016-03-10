@@ -29,6 +29,9 @@ using namespace cv;
 using namespace std;
 using boost::assign::map_list_of;
 
+enum angle{ YAW = 0 , ROLL = 1 , PITCH = 2 };
+enum direction{ X = 0 , Y = 1 , Z = 2 };
+
 enum returnValEnum {
 	N_NORMAL, E_BAD_ARGUMENTS, E_FILE_NOT_EXISTS, E_TOO_FEW_VIDEOS
 };
@@ -57,12 +60,88 @@ const boost::unordered_map<returnValEnum, const char*> returnValToString = map_l
     (E_FILE_NOT_EXISTS, "Files or directories cannot be found.")
     (E_TOO_FEW_VIDEOS, "Loaded videos are too few to stitch.");
     
+char* getCmdOption(char** begin, char** end, const std::string & option);
+bool cmdOptionExists(char** begin, char** end, const std::string& option);
+bool checkArguments(int argc, char** argv);
+
 void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);
 string stringFormat(const string fmt_str, ...); 
+Mat getRotationMatrix(double yaw, double pitch, double roll);
 Mat getZMatrix(double alpha);
 Mat getYMatrix(double beta);
 Mat getXMatrix(double gamma);
 void segFaultHandler (int sig);
+
+class RMat{
+public:
+	double get_yaw(){ return eulerangle[YAW]; }
+	double get_roll(){ return eulerangle[ROLL]; }
+	double get_pitch(){ return eulerangle[PITCH]; }
+	Mat getR() { return getRotationMatrix(eulerangle[YAW], eulerangle[PITCH], eulerangle[ROLL] ); }
+
+	void set(double yaw, double pitch, double roll) { eulerangle[YAW] = yaw; eulerangle[PITCH] = pitch; eulerangle[ROLL] = roll;}
+	void set_yaw(double temp_yaw){ eulerangle[YAW] = temp_yaw; }
+	void set_roll(double temp_roll){ eulerangle[ROLL] = temp_roll; }
+	void set_pitch(double temp_pitch){ eulerangle[PITCH] = temp_pitch; }
+
+private:
+	double eulerangle[3];
+};
+
+class TMat{
+public:
+	double get_x(){ return direction[X]; }
+	double get_y(){ return direction[Y]; }
+	double get_z(){ return direction[Z]; }
+
+	void set(double x, double y, double z) { direction[X] = x; direction[Y] = y; direction[Z] = z;}
+	void set_x(double temp_x){ direction[X] = temp_x; }
+	void set_y(double temp_y){ direction[Y] = temp_y; }
+	void set_z(double temp_z){ direction[Z] = temp_z; }
+
+private:
+	double direction[3];
+};
+
+class ExtrinsicParam {
+public:
+	ExtrinsicParam();
+	ExtrinsicParam(double y, double p, double r, double tx, double ty, double tz);
+
+	Mat getR() { return R.getR(); }
+	double get_RMat_Value(int angle);
+	void set_RMat_Value(int angle , double value);
+	double get_TMat_Value(int direction);
+	void set_TMat_Value(int direction , double value);
+
+private:
+	RMat R;
+	TMat T;
+};
+
+class ExtrinsicParamSet {
+public:
+	ExtrinsicParamSet(int num_camera);
+	void generatePerturbation(int num_random, vector<ExtrinsicParamSet>& candidatePool);
+	void setParam(int index, ExtrinsicParam param);
+	ExtrinsicParamSet clone();
+
+	vector<ExtrinsicParam> params;
+};
+
+class FeatureMatch {
+public:
+	Point p1;
+	Point p2;
+};
+
+class MatchInfo {
+public:
+	int idx1;
+	int idx2;
+	vector<FeatureMatch> matches;
+};
+
 
 #endif // _H_USAGE

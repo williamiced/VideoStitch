@@ -5,15 +5,7 @@ void MappingProjector::setCameraParams(vector<struct MutualProjectParam> params,
 	for (int v=0; v<mViewCount; v++) {
 		Mat r = Mat::zeros(3, 3, CV_32F);
 		struct MutualProjectParam vP = params[v];
-		double alpha = vP.y;
-		double beta = vP.p;
-		double gamma = vP.r;
-
-		// Take camera as reference coordinate system, around: x-axis -> pitch, y-axis -> yaw, z->axis -> roll
-		Mat Rz = getZMatrix(gamma);
-		Mat Ry = getYMatrix(alpha);
-		Mat Rx = getXMatrix(beta);
-		r = Ry * Rx * Rz;
+		r = getRotationMatrix(vP.y, vP.p, vP.r);
 		mR.push_back( r );
 	}
 
