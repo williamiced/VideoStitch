@@ -12,6 +12,8 @@ public final class R {
     }
     public static final class drawable {
         public static final int ic_launcher=0x7f020000;
+        public static final int tmp=0x7f020001;
+        public static final int world_512_512=0x7f020002;
     }
     public static final class id {
         public static final int cardboard_view=0x7f060001;
@@ -25,8 +27,10 @@ public final class R {
         public static final int fragment_sphere=0x7f040000;
         public static final int grid_fragment=0x7f040001;
         public static final int light_vertex=0x7f040002;
-        public static final int passthrough_fragment=0x7f040003;
-        public static final int vertex_sphere=0x7f040004;
+        public static final int my_fragment=0x7f040003;
+        public static final int my_vertex=0x7f040004;
+        public static final int passthrough_fragment=0x7f040005;
+        public static final int vertex_sphere=0x7f040006;
     }
     public static final class string {
         public static final int app_name=0x7f050000;

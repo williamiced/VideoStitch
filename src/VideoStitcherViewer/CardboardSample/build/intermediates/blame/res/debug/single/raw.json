@@ -28,6 +28,14 @@
         "source": "/home/wlee/Libraries/cardboard-java/CardboardSample/src/main/res/raw/light_vertex.shader"
     },
     {
+        "merged": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/raw/my_fragment.shader",
+        "source": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/src/main/res/raw/my_fragment.shader"
+    },
+    {
+        "merged": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/raw/my_vertex.shader",
+        "source": "/home/wlee/projects/VideoStitch/src/VideoStitcherViewer/CardboardSample/src/main/res/raw/my_vertex.shader"
+    },
+    {
         "merged": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/build/intermediates/res/merged/debug/raw/light_vertex.shader",
         "source": "/home/wlee/AndroidStudioProjects/VideoStitcherViewer/CardboardSample/src/main/res/raw/light_vertex.shader"
     },

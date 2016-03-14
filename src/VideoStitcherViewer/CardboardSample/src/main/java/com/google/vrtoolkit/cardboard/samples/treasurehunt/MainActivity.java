@@ -58,7 +58,7 @@ public class MainActivity extends CardboardActivity  {
     return shader;
   }
 
-  private static void checkGLError(String label) {
+  public static void checkGLError(String label) {
     int error;
     while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
       Log.e(TAG, label + ": glError " + error);
