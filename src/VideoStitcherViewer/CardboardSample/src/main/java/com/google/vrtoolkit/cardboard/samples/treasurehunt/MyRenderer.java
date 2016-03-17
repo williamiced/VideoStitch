@@ -76,6 +76,9 @@ public class MyRenderer implements CardboardView.StereoRenderer {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mSphereTextureDataHandle);
         GLES20.glUniform1i(mSphereTextureUniformHandle, 0);
 
+        //Bitmap bitmap = BitmapFactory.decodeResource(MainActivity.getContext().getResources(), R.drawable.tmp);
+        //GLUtils.texSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, bitmap);
+
         MainActivity.checkGLError("onDrawEye - texture");
 
         // Apply eyes transformation to camera
@@ -120,7 +123,7 @@ public class MyRenderer implements CardboardView.StereoRenderer {
     }
 
     private void initBuffers() {
-        int mStep = 5;
+        int mStep = 2;
         double DEG = Math.PI/180;
 
         double dTheta = mStep * DEG;
@@ -283,6 +286,7 @@ public class MyRenderer implements CardboardView.StereoRenderer {
             // Bind the texture object
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId[0]);
 
+            //GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, bitmap.getWidth(), bitmap.getHeight(), 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, null );
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
             // Set the filtering mode
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,

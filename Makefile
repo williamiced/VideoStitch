@@ -48,8 +48,17 @@ VideoStitch: $(OBJ_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS)
 
+socket: $(OBJ_FILES) 
+	$(CC) $? -I$(SRC) -I. src/cardboard/VSSocket.cpp src/cardboard/server.cpp -o $(BIN)/$@ $(LDFLAGS)
+
+socketC:
+	$(CC) obj/Usage.o $? -I$(SRC) src/cardboard/client.cpp -o $(BIN)/$@ $(LDFLAGS)
+
 bauzi: 
 	$(CC) obj/Usage.o $? -I$(SRC) -Itools/BauziCalibration tools/BauziCalibration/BauziCalibrator.cpp -o $(BIN)/$@ $(LDFLAGS)
+
+featureGenerator: 
+	$(CC) obj/Usage.o $? -I$(SRC) -Itools/ManualFeatureGenerator tools/BauziCalibration/ManualFeatureGenerator.cpp -o $(BIN)/$@ $(LDFLAGS)
 
 PR: $(OBJ_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
@@ -72,7 +81,13 @@ runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi
 
 runBauzi:
-	$(BIN)/bauzi --input data/Bauzi/inputImage.txt --iter 10
+	$(BIN)/bauzi --input data/Bauzi/inputImage.txt --iter 10 --featureInfo FeatureInfo.txt
+
+runFeatureGenerator:
+	$(BIN)/featureGenerator --input data/Bauzi/inputImage.txt
+
+runSocket:
+	$(BIN)/socket --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 
 calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml

@@ -1,6 +1,8 @@
 #ifndef _H_BAUZI_CALIBRATOR
 #define _H_BAUZI_CALIBRATOR
 
+#include <stdio.h>
+#include <string.h>
 #include <memory>
 #include <iostream>
 #include <fstream>
@@ -41,7 +43,9 @@ class BauziCalibrator {
 		void doFeatureMatching();
 
 	public:
-		BauziCalibrator(char* fileName, int iterationCount);
+		void loadFeatureInfoFromFile(char* fileName);
+		void runProcess(int iterationCount);
+		BauziCalibrator(char* fileName);
 };
 
 #endif //_H_BAUZI_CALIBRATOR

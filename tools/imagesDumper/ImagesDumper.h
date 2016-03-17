@@ -7,7 +7,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include "../../src/header/Usage.h"
+#include <header/Usage.h>
 
 #include "opencv2/core.hpp"
 #include "opencv2/opencv.hpp"

@@ -63,7 +63,7 @@ void ImagesDumper::startDumpImages() {
 		vector<bool> isHasPattern;
 		int hasPatternCount = 0;
 		for (int v=0; v<mVideoList.size(); v++) {
-			if ( hasPattern(frames[v]) ) {
+			if ( hasPattern(frames[v]) || true ) {
 				hasPatternCount++;
 				isHasPattern.push_back(true);
 			} else {

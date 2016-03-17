@@ -101,6 +101,9 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			mTransmitFunc(targetCanvas);
 
 		(*outputVideo) << targetCanvas;
+
+		imwrite("test.png", targetCanvas(Rect(OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3, OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3)));
+		exit(0);
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
