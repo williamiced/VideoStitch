@@ -55,12 +55,16 @@ void ManualFeatureGenerator::clearBuffer() {
 }
 
 void ManualFeatureGenerator::writeToFile() {
+	Size imgSize = mRawImages[0].size();
+	double scaleX = imgSize.width / (WINDOW_WIDTH / 2);
+	double scaleY = imgSize.height / (WINDOW_HEIGHT);
+
 	ofstream outfile;
 
   	outfile.open(FILE_NAME, ios_base::app);
   	outfile << stringFormat("#%d-#%d\n", mViewIdx1, mViewIdx2);
   	for (int i=0; i<min(mLeftBuffer.size(), mRightBuffer.size()); i++) 
-  		outfile << stringFormat("%d,%d@%d,%d\n", mLeftBuffer[i].x, mLeftBuffer[i].y, mRightBuffer[i].x, mRightBuffer[i].y);
+  		outfile << stringFormat("%d,%d@%d,%d\n", (int)(mLeftBuffer[i].x * scaleX), (int)(mLeftBuffer[i].y * scaleY), (int)(mRightBuffer[i].x * scaleX), (int)(mRightBuffer[i].y * scaleY));
 }
 
 bool ManualFeatureGenerator::isWindowActive() {
