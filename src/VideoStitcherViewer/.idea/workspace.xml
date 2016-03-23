@@ -45,8 +45,8 @@
       <file leaf-file-name="MyRenderer.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/CardboardSample/src/main/java/com/google/vrtoolkit/cardboard/samples/treasurehunt/MyRenderer.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="2.4633732">
-              <caret line="138" column="39" selection-start-line="138" selection-start-column="39" selection-end-line="138" selection-end-column="39" />
+            <state vertical-scroll-proportion="0.7512777">
+              <caret line="71" column="0" selection-start-line="71" selection-start-column="0" selection-end-line="71" selection-end-column="0" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -2136,8 +2136,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/CardboardSample/src/main/java/com/google/vrtoolkit/cardboard/samples/treasurehunt/MyRenderer.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="2.4633732">
-          <caret line="138" column="39" selection-start-line="138" selection-start-column="39" selection-end-line="138" selection-end-column="39" />
+        <state vertical-scroll-proportion="0.7512777">
+          <caret line="71" column="0" selection-start-line="71" selection-start-column="0" selection-end-line="71" selection-end-column="0" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>

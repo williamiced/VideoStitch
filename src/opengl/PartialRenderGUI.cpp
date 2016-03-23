@@ -73,7 +73,6 @@ void initRendering() {
     glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_MULTISAMPLE);
     gQuad = gluNewQuadric();
-    //gLatestImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
     gLatestImg = imread("tmp.png");
     gTextureId = initTexture();
 }

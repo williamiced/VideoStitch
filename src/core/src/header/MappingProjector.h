@@ -40,12 +40,15 @@ class MappingProjector {
 		vector<Mat> mProjMapX;
 		vector<Mat> mProjMapY;
 		vector<Mat> mProjMasks;
+		vector<MatchInfo> mMatchInfos;
 
 		void setupWarpers();
 		void defineWindowSize();
 		void initialData();
 		void interpolateUVcheckupTable();
 		void constructUVcheckupTable();
+		void refineCheckupTableByFeaturesMatching();
+		void drawMatches(Mat& img);
 		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask);
 		void tuneToMap(Point2f& p);
 		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
@@ -61,6 +64,7 @@ class MappingProjector {
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);
 		void setCameraParams(vector<Mat> Rs, vector<Mat> Ks);
 		void checkFPS();
+		void saveMatchInfos(vector<MatchInfo> matchInfos);
 };
 
 #endif // _H_MAPPING_PROJECTOR

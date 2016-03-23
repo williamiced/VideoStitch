@@ -37,6 +37,11 @@ void MappingProjector::calcProjectionMatrix() {
 	interpolateUVcheckupTable();
 	logMsg(LOG_INFO, "=== Done projection matrix calculation ===");
 
+#ifdef USE_HOMOGRAPHY_WARP	
+	refineCheckupTableByFeaturesMatching();
+	logMsg(LOG_INFO, "=== Refine complete ===");
+#endif	
+
 	if (STRATEGY_OUTPUT == OUTPUT_PARTIAL_PANO || STRATEGY_OUTPUT == OUTPUT_FULL_PANO) {
 		mBP->genWeightMapByMasks(mProjMasks);
 	}
@@ -104,6 +109,50 @@ void MappingProjector::interpolateUVcheckupTable() {
 				} 
 			}
 		}
+	}
+}
+
+void MappingProjector::refineCheckupTableByFeaturesMatching() {
+	// For every two views, warp the first view to match second view
+	for (size_t i=0; i<mMatchInfos.size(); i++) {
+		int idx1 = mMatchInfos[i].idx1;
+		int idx2 = mMatchInfos[i].idx2;
+
+		vector<Point2d> matchesInIdx1;
+		vector<Point2d> matchesInIdx2;
+
+		vector<FeatureMatch> matches = mMatchInfos[i].matches;
+		if (matches.size() < 9)
+			continue;
+		for (size_t m=0; m<matches.size(); m++) {
+			Point2f p1 = mSphericalWarpers[idx1]->warpPoint( Point2f(matches[m].p1.x, matches[m].p1.y), mK[idx1], mR[idx1] );
+			Point2f p2 = mSphericalWarpers[idx2]->warpPoint( Point2f(matches[m].p2.x, matches[m].p2.y), mK[idx2], mR[idx2] );
+
+			int oX = static_cast<int> ( (p1.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
+			int oY = static_cast<int> ( p1.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+			Point2d p1d = Point2d( (double)oX, (double)oY );
+
+			oX = static_cast<int> ( (p2.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
+			oY = static_cast<int> ( p2.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+			Point2d p2d = Point2d( (double)oX, (double)oY );
+
+			matchesInIdx1.push_back( p1d );
+			matchesInIdx2.push_back( p2d );
+		}
+		vector<unsigned char> inliersMask(matchesInIdx1.size());
+		Mat H = findHomography(matchesInIdx1, matchesInIdx2, CV_RANSAC, RANSAC_REPROJ_THRES, inliersMask);
+		cout << stringFormat("view: %d->%d, matches: %d", idx1, idx2, matches.size()) << endl;
+		
+		Mat tmpMap;
+		mProjMapX[idx1].convertTo(tmpMap, CV_32F);
+		cv::warpPerspective(tmpMap, tmpMap, H, mProjMapX[idx1].size());
+		//tmpMap.convertTo(mProjMapX[idx1], CV_8U);
+
+		Mat tmpMap2;
+		mProjMapY[idx1].convertTo(tmpMap2, CV_32F);
+		cv::warpPerspective(tmpMap2, tmpMap2, H, mProjMapY[idx1].size());
+		//tmpMap2.convertTo(mProjMapY[idx1], CV_8U);
+		// Can have some issues here, not sure
 	}
 }
 
@@ -220,7 +269,6 @@ void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point
 			}
 		}
 	}
-	
 
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
@@ -246,11 +294,18 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 				if (mProjMasks[v].at<uchar>(y, x) != 0) {
 					int px = mProjMapX[v].at<int>(y, x);
 					int py = mProjMapY[v].at<int>(y, x);
-					mWarpedImgs[v].at<Vec3b>(y, x) = frames[v].at<Vec3b>(py, px);
+					if (py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height)
+						mWarpedImgs[v].at<Vec3b>(y, x) = Vec3b(0, 0, 0);	
+					else
+						mWarpedImgs[v].at<Vec3b>(y, x) = frames[v].at<Vec3b>(py, px);
 				}
 			}
 		}
 	}
+
+	//for (int v=0; v<mViewCount; v++) {
+	//	imwrite(stringFormat("Warped_%d.png", v), mWarpedImgs[v]);
+	//}
 
 	if ( mEP->needFeed() )
 		mEP->feedExposures(mWarpedImgs, mProjMasks);
@@ -260,6 +315,8 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 	Mat outMask;
 	mBP->blend(outImg, outMask);
 	outImg.convertTo(outImg, CV_8UC3);
+
+	drawMatches(outImg);
 
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
@@ -294,4 +351,41 @@ int MappingProjector::rad2Deg(float r) {
 
 float MappingProjector::deg2Rad(int d) {
 	return d * M_PI / 180 ;
+}
+
+void MappingProjector::saveMatchInfos(vector<MatchInfo> matchInfos) {
+	mMatchInfos = matchInfos;
+}
+
+void MappingProjector::drawMatches(Mat& img) {
+	vector<Scalar> colors;
+	for(int v=0; v<mViewCount; v++)
+		colors.push_back(Scalar(rand() % 255, rand() % 255, rand() % 255));
+
+	for (size_t i=0; i<mMatchInfos.size(); i++) {
+		int idx1 = mMatchInfos[i].idx1;
+		int idx2 = mMatchInfos[i].idx2;
+
+		vector<FeatureMatch> matches = mMatchInfos[i].matches;
+		for (size_t m=0; m<matches.size(); m++) {
+			Point2f p1 = mSphericalWarpers[idx1]->warpPoint( Point2f(matches[m].p1.x, matches[m].p1.y), mK[idx1], mR[idx1] );
+			Point2f p2 = mSphericalWarpers[idx2]->warpPoint( Point2f(matches[m].p2.x, matches[m].p2.y), mK[idx2], mR[idx2] );
+
+			int oX = static_cast<int> ( (p1.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
+			int oY = static_cast<int> ( p1.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+			int oX2 = static_cast<int> ( (p2.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
+			int oY2 = static_cast<int> ( p2.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+			
+			circle(img, Point(oX, oY), 3, colors[idx1]);
+			circle(img, Point(oX2, oY2), 3, colors[idx2]);
+			line(img, Point(oX, oY), Point(oX2, oY2), Scalar(0, 0, 0), 2);
+
+			circle(mWarpedImgs[idx1], Point(oX, oY), 3, colors[idx1]);
+			circle(mWarpedImgs[idx2], Point(oX2, oY2), 3, colors[idx2]);
+		}
+	}	
+
+	for (int v=0; v<mViewCount; v++) {
+		imwrite(stringFormat("Warped_%d.png", v), mWarpedImgs[v]);
+	}
 }

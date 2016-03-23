@@ -75,7 +75,7 @@ ImagesDumper:
 run:
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
-	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt
 
 runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi
@@ -84,7 +84,7 @@ runBauzi:
 	$(BIN)/bauzi --input data/Bauzi/inputImage.txt --iter 10 --featureInfo FeatureInfo.txt
 
 runFeatureGenerator:
-	$(BIN)/featureGenerator --input data/Bauzi/inputImage.txt
+	$(BIN)/featureGenerator --input data/Cut15/inputImage.txt
 
 runSocket:
 	$(BIN)/socket --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
@@ -93,7 +93,8 @@ calibrator:
 	$(BIN)/CameraCalibrator data/CalibrationImages2/input_config.xml
 
 dumper:
-	$(BIN)/ImagesDumper data/Bauzi/inputVideo.txt data/Library20160216/pattern.png 0 1 1 data/Bauzi/raw/
+	$(BIN)/ImagesDumper data/Cut15/inputVideo.txt data/Library20160216/pattern.png 0 1 1 data/Cut15/raw/
+	#$(BIN)/ImagesDumper data/Bauzi/inputVideo.txt data/Library20160216/pattern.png 0 1 1 data/Bauzi/raw/
 	#$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump4
 	#$(BIN)/ImagesDumper data/Library20160216/inputVideo2.txt data/Library20160216/pattern.png 0 1 1 data/Library20160216/dump3
 

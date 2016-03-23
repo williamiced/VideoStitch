@@ -10,6 +10,7 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]):
 	mRenderCenterV(2.f),
 	mRenderRange(2.f) {
 
+		srand(time(NULL));
 	if ( !checkArguments(argc, argv) )
 		exitWithMsg(E_BAD_ARGUMENTS);
 	/** 
@@ -41,6 +42,13 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]):
 #ifdef USE_LENS_UNDISTORT	
 	logMsg(LOG_INFO, "=== Initialize Lens Processor ===");
 	mLP = shared_ptr<LensProcessor>(new LensProcessor( mVL->getCalibrationData("K"), mVL->getCalibrationData("D"), mVL->getVideoSize(), mVL->getFocalLength()) );
+#endif
+
+#ifdef USE_HOMOGRAPHY_WARP
+	logMsg(LOG_INFO, "=== Load Feature Matching Infos From File ===");
+	vector<MatchInfo> matchInfos;
+	mVL->loadFeatureInfoFromFile( getCmdOption(argv, argv + argc, "--featureInfo"), matchInfos);
+	mMP->saveMatchInfos( matchInfos );
 #endif
 
 	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
@@ -102,7 +110,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 
 		(*outputVideo) << targetCanvas;
 
-		imwrite("test.png", targetCanvas(Rect(OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3, OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3)));
+		//imwrite("test.png", targetCanvas(Rect(OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3, OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3)));
+		imwrite("test.png", targetCanvas );
 		exit(0);
 	}
 	mMP->checkFPS();

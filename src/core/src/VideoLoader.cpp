@@ -175,6 +175,54 @@ void VideoLoader::calcFocalLengthInPixel(double crop, double hfov) {
     mFocalLength = (mFocalLength / sensorSizeX) * mVideoSize.width;
 }
 
+void VideoLoader::loadFeatureInfoFromFile(char* fileName, vector<MatchInfo>& matchInfos) {
+	vector<MatchInfo> matcheInfos;
+
+	ifstream inputFile(fileName);
+
+	string str;
+	int idx1 = -1;
+	int idx2 = -1;
+	vector<FeatureMatch> currentFM;
+	while (getline(inputFile, str)) {
+		if (str.find("#") == 0) {
+			if (idx1 >= 0) {
+				MatchInfo mi;
+				mi.idx1 = idx1;
+				mi.idx2 = idx2;
+				mi.matches = currentFM;
+				matchInfos.push_back(mi);
+				currentFM.clear();
+			}
+			idx1 = str.at(1) - '0';
+			idx2 = str.at(4) - '0';
+		} else {
+			vector<int> tmpVec;
+			char * cstr = new char [str.length()+1];
+  			std::strcpy (cstr, str.c_str());
+
+  			char * p = std::strtok (cstr,",@");
+			while (p!=0) {
+				tmpVec.push_back(atoi(p));
+			    p = std::strtok(NULL,",@");
+			}
+
+			delete[] cstr;
+
+			FeatureMatch fm;
+			fm.p1 = Point(tmpVec[0], tmpVec[1]);
+			fm.p2 = Point(tmpVec[2], tmpVec[3]);
+			currentFM.push_back(fm);
+		}
+	}
+	MatchInfo mi;
+	mi.idx1 = idx1;
+	mi.idx2 = idx2;
+	mi.matches = currentFM;
+	matchInfos.push_back(mi);
+	currentFM.clear();
+}
+
 VideoLoader::VideoLoader(char* inputFileName, int duration):
 	mCurrentFirstFrame(0),
 	mDuration(duration) {

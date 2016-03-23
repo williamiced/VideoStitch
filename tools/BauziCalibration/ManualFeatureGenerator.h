@@ -34,6 +34,7 @@ class ManualFeatureGenerator {
 		vector<Scalar> mColorBuffer;
 		vector<Point> mLeftBuffer;
 		vector<Point> mRightBuffer;
+		vector<MatchInfo> mMatchInfos;
 		
 		int loadImages(char* fileName);
 		Scalar genRandomScalar();
@@ -44,6 +45,7 @@ class ManualFeatureGenerator {
 	public:
 		ManualFeatureGenerator(char* fileName);
 		void runMarkProcess();
+		void loadFeatureInfoFromFile(char* fileName);
 		bool isWindowActive();
 		void leftBtn(int x, int y);
 		void rightBtn(int x, int y);

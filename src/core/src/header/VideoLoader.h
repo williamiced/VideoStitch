@@ -47,6 +47,7 @@ class VideoLoader {
 		vector<struct MutualProjectParam> getPTOData();
 		void loadCalibrationFile(char* calFileName);
 		void loadCalibrationFileFromToolBox(char* calFileName);
+		void loadFeatureInfoFromFile(char* fileName, vector<MatchInfo>& matchInfos);
 		void loadPTOFile(char* calFileName);
 		void preloadVideo();
 
