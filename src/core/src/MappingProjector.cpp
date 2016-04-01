@@ -114,9 +114,17 @@ void MappingProjector::interpolateUVcheckupTable() {
 
 void MappingProjector::refineCheckupTableByFeaturesMatching() {
 	// For every two views, warp the first view to match second view
+	for (int v=0; v<mViewCount; v++) {
+		vector<Mat> Hs;
+		mHs.push_back(Hs);
+	}
+
 	for (size_t i=0; i<mMatchInfos.size(); i++) {
 		int idx1 = mMatchInfos[i].idx1;
 		int idx2 = mMatchInfos[i].idx2;
+
+		//if ( !( (idx1 == 0 && idx2 == 5) || (idx1 == 5 && idx2 == 0) ))
+		//	continue;
 
 		vector<Point2d> matchesInIdx1;
 		vector<Point2d> matchesInIdx2;
@@ -138,20 +146,31 @@ void MappingProjector::refineCheckupTableByFeaturesMatching() {
 
 			matchesInIdx1.push_back( p1d );
 			matchesInIdx2.push_back( p2d );
+			//matchesInIdx2.push_back( p1d + Point2d(40, 40) );
 		}
 		vector<unsigned char> inliersMask(matchesInIdx1.size());
+
 		Mat H = findHomography(matchesInIdx1, matchesInIdx2, CV_RANSAC, RANSAC_REPROJ_THRES, inliersMask);
+		cout << H << endl;
+
+		for (int j=0; j<inliersMask.size(); j++) {
+			cout << (int)inliersMask[j] << " ";
+		}
+
 		cout << stringFormat("view: %d->%d, matches: %d", idx1, idx2, matches.size()) << endl;
 		
+		mHs[idx1].push_back(H);
+		/*
 		Mat tmpMap;
 		mProjMapX[idx1].convertTo(tmpMap, CV_32F);
 		cv::warpPerspective(tmpMap, tmpMap, H, mProjMapX[idx1].size());
-		//tmpMap.convertTo(mProjMapX[idx1], CV_8U);
+		tmpMap.convertTo(mProjMapX[idx1], CV_8U);
 
 		Mat tmpMap2;
 		mProjMapY[idx1].convertTo(tmpMap2, CV_32F);
 		cv::warpPerspective(tmpMap2, tmpMap2, H, mProjMapY[idx1].size());
-		//tmpMap2.convertTo(mProjMapY[idx1], CV_8U);
+		tmpMap2.convertTo(mProjMapY[idx1], CV_8U);
+		*/
 		// Can have some issues here, not sure
 	}
 }
@@ -302,7 +321,7 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 			}
 		}
 	}
-
+	
 	//for (int v=0; v<mViewCount; v++) {
 	//	imwrite(stringFormat("Warped_%d.png", v), mWarpedImgs[v]);
 	//}
@@ -316,7 +335,7 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 	mBP->blend(outImg, outMask);
 	outImg.convertTo(outImg, CV_8UC3);
 
-	drawMatches(outImg);
+	//drawMatches(outImg);
 
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );

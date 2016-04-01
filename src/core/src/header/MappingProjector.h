@@ -41,6 +41,7 @@ class MappingProjector {
 		vector<Mat> mProjMapY;
 		vector<Mat> mProjMasks;
 		vector<MatchInfo> mMatchInfos;
+		vector< vector<Mat> > mHs;
 
 		void setupWarpers();
 		void defineWindowSize();

@@ -1,6 +1,10 @@
 #include <header/VideoStitch.h>
 
 VideoStitcher::~VideoStitcher() {
+#ifdef REAL_TIME_STREAMING
+	if (mRSM != nullptr)
+		mRSM->waitForServerFinish();
+#endif
 }
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]): 
@@ -22,6 +26,11 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]):
 	logMsg(LOG_INFO, "=== Do preprocess ===");
 	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
 	logMsg(LOG_INFO, "=== Data loaded complete ===");
+
+#ifdef REAL_TIME_STREAMING
+	logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
+	mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv) );
+#endif
 
 	logMsg(LOG_INFO, "=== Initialize Video Stablizer ===");
 	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
@@ -67,9 +76,10 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			7. Ouput
 	*/
 	logMsg(LOG_INFO, "=== Do real-time process ===");
-	double videoFPS = mVL->getVideoFPS();
 
-	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), videoFPS, mMP->getOutputVideoSize() );
+#ifndef REAL_TIME_STREAMING
+	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
+#endif
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
@@ -108,11 +118,13 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		if (mTransmitFunc != nullptr)
 			mTransmitFunc(targetCanvas);
 
+#ifdef REAL_TIME_STREAMING
+		mRSM->streamOutFrame(targetCanvas);
+#else
 		(*outputVideo) << targetCanvas;
+#endif
 
 		//imwrite("test.png", targetCanvas(Rect(OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3, OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3)));
-		imwrite("test.png", targetCanvas );
-		exit(0);
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
