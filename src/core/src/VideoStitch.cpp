@@ -2,8 +2,10 @@
 
 VideoStitcher::~VideoStitcher() {
 #ifdef REAL_TIME_STREAMING
+	logMsg(LOG_INFO, "Wait Server to finish");
 	if (mRSM != nullptr)
 		mRSM->waitForServerFinish();
+	logMsg(LOG_INFO, "Stitcher release");
 #endif
 }
 

@@ -18,9 +18,12 @@ void RealtimeStreamMaker::need_data(GstElement *appsrc, guint unused, MyContext 
     GstFlowReturn ret;
 
     GstMapInfo info;
-    //Mat latestFrame = imread("dog.jpg");
-    //cvtColor(latestFrame, latestFrame, CV_BGR2RGB);
-    //size = latestFrame.cols * latestFrame.rows * latestFrame.channels();
+    /*
+    Mat latestFrame = imread("dog.jpg");
+    cvtColor(latestFrame, latestFrame, CV_BGR2RGB);
+    resize(latestFrame, latestFrame, Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT) );
+    size = latestFrame.cols * latestFrame.rows * latestFrame.channels();
+    */
 
     //static bool isFirstTime = true;
     //if (!isFirstTime)
