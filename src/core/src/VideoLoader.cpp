@@ -18,30 +18,35 @@ void VideoLoader::loadVideos(char* fileName) {
 	int h = (int) mVideoList[0]->get(CV_CAP_PROP_FRAME_HEIGHT);
 	mVideoSize = Size(w, h);
 
-	mPreloadFrames.resize(mVideoList.size());
-	preloadVideo();
+	mFrameBuffers.resize(mVideoList.size());
+	mBufferProducerThread = thread(&VideoLoader::preloadVideo, this);
 }
 
 void VideoLoader::preloadVideo() {
-	for (unsigned int v=0; v<mVideoList.size(); v++) {
-		mPreloadFrames[v].clear();
-		mVideoList[v]->set(CV_CAP_PROP_POS_FRAMES, mCurrentFirstFrame);
-		for (int f=0; f<VIDEO_CONTAINER_SIZE; f++) {
-			if (f + mCurrentFirstFrame >= mDuration || f + mCurrentFirstFrame >= mVideoList[v]->get(CV_CAP_PROP_FRAME_COUNT) )
-				break;
-			Mat frame;
-			bool suc1 = mVideoList[v]->grab();
-			if (!suc1) {
-				logMsg(LOG_WARNING, stringFormat("\t\tFrame #%d in video #%d is not read correctly", f + mCurrentFirstFrame, v ) );
-			} else {
-				bool suc2 = mVideoList[v]->retrieve(frame);
-				if (!suc2) 
-					logMsg(LOG_WARNING, stringFormat("\t\tFrame #%d in video #%d is not read correctly", f + mCurrentFirstFrame, v ) );
+	mIsProducerRun = true;
+	while (mFrameBuffers[0].size() < VIDEO_CONTAINER_SIZE && mCurrentFirstFrame < mDuration) {
+		vector<Mat> frames;
+		frames.resize(mVideoList.size());
+		bool isFramesHealthy = true;
+		
+		for (unsigned int v=0; v<mVideoList.size(); v++) {
+			if ( !mVideoList[v]->read(frames[v]) ) {
+				isFramesHealthy = false;
+				continue;
 			}
-			mPreloadFrames[v].push_back(frame);
 		}
-		logMsg(LOG_INFO, stringFormat("\tVideo # %d preloaded", v) );
+
+		if (!isFramesHealthy) {
+			logMsg(LOG_WARNING, stringFormat("\t\tFrames #%d in videos are not read correctly", mCurrentFirstFrame));
+		} else {
+			for (unsigned int v=0; v<mVideoList.size(); v++) 
+				mFrameBuffers[v].push(frames[v]);	
+			logMsg(LOG_INFO, stringFormat("\t\tRead frames #%d", mCurrentFirstFrame));
+		}
+		
+		mCurrentFirstFrame++;
 	}
+	mIsProducerRun = false;
 }
 
 double VideoLoader::getVideoFPS() {
@@ -80,18 +85,20 @@ int VideoLoader::getVideoCount() {
 }
 
 bool VideoLoader::getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame) {
-	if (vIdx >= mVideoList.size() || fIdx >= mVideoList[vIdx]->get(CV_CAP_PROP_FRAME_COUNT)) {
-		logMsg(LOG_ERROR, stringFormat("Unproper frame requesting. [ f: %d, v: %d]", fIdx, vIdx) );
+	if (mCurrentFirstFrame >= mDuration && mFrameBuffers[vIdx].size() == 0)
 		return false;
+	
+	if (!mIsProducerRun) {
+		mBufferProducerThread.join();
+		if (mCurrentFirstFrame < mDuration)
+			mBufferProducerThread = thread(&VideoLoader::preloadVideo, this);
 	}
-	int posInMemory = fIdx - mCurrentFirstFrame;
-	if (posInMemory >= static_cast<int>(mPreloadFrames[vIdx].size()) ) {
-		mCurrentFirstFrame += VIDEO_CONTAINER_SIZE;
-		preloadVideo();
-	}
-	frame = mPreloadFrames[vIdx][fIdx - mCurrentFirstFrame];
-	if (frame.cols == 0)
-		return false;
+
+	while (mFrameBuffers[vIdx].size() == 0) {
+		logMsg(LOG_WARNING, "No frame availble, wait for it...");
+	} 
+	frame = mFrameBuffers[vIdx].front();
+	mFrameBuffers[vIdx].pop();
 
 	return true;
 }
@@ -225,13 +232,16 @@ void VideoLoader::loadFeatureInfoFromFile(char* fileName, vector<MatchInfo>& mat
 
 VideoLoader::VideoLoader(char* inputFileName, int duration):
 	mCurrentFirstFrame(0),
-	mDuration(duration) {
+	mDuration(duration) ,
+	mIsProducerRun(false) {
 	if (inputFileName == 0)
 		exitWithMsg(E_FILE_NOT_EXISTS);
 	loadVideos(inputFileName);
 }
 
 VideoLoader::~VideoLoader() {
+	if(mBufferProducerThread.joinable()) 
+		mBufferProducerThread.join();
 	for (VideoCapture* cap : mVideoList)
 		cap->release();
 }

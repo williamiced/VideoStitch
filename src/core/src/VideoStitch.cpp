@@ -94,7 +94,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		for (int v=0; v<seqCount; v++) {
 			Mat frame;
 			if ( !mVL->getFrameInSeq(f, v, frame) ) {
-				logMsg(LOG_WARNING, stringFormat("\t=== Frames %d contain broken frame ===", f));
+				logMsg(LOG_WARNING, stringFormat("\t=== Frames %d cannot be reached ===", f));
 				isHealthyFrame = false;
 				break;
 			}

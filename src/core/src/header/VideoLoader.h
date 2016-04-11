@@ -9,6 +9,10 @@
 #include <iterator>
 #include <vector>
 #include <map>
+#include <atomic> 
+#include <thread>
+#include <queue>
+#include <mutex>
 
 #include <header/Params.h>
 #include <header/Usage.h>
@@ -25,13 +29,19 @@ using namespace cv;
 class VideoLoader {
 	private:
 		vector<VideoCapture*> mVideoList;
-		vector< vector<Mat> > mPreloadFrames;
+		vector< queue<Mat> > mFrameBuffers;
 		vector<struct MutualProjectParam> mMutualParams;
 		double mFocalLength;
 		Size mVideoSize;
 		map< string, Mat > mCalibrationMatrix;
 		int mCurrentFirstFrame;
 		int mDuration;
+
+		// For thread control
+		thread mBufferProducerThread;
+		atomic<bool> mIsProducerRun;
+		mutex mVideoListLock;
+		mutex mFrameBufferLock;
 
 		void loadVideos(char* flieName);
 		void calcFocalLengthInPixel(double crop, double hfov);
