@@ -159,7 +159,7 @@ static gboolean DisplayFrame(GstAppSink *fks, CustomData* data) {
         gst_structure_get_int(pStructure, "bpp", &bpp);
         format = gst_structure_get_string(pStructure, "format");
 
-        GST_DEBUG("Format: %s", format);
+        //GST_DEBUG("Format: %s", format);
 
         if ( !gst_buffer_map(buf, &info, GST_MAP_READ) )
             GST_DEBUG ("Buffer is unreadable");

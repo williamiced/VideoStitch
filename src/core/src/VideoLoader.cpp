@@ -37,11 +37,11 @@ void VideoLoader::preloadVideo() {
 		}
 
 		if (!isFramesHealthy) {
-			logMsg(LOG_WARNING, stringFormat("\t\tFrames #%d in videos are not read correctly", mCurrentFirstFrame));
+			logMsg(LOG_WARNING, stringFormat("Frames #%d in videos are not read correctly", mCurrentFirstFrame), 2);
 		} else {
 			for (unsigned int v=0; v<mVideoList.size(); v++) 
 				mFrameBuffers[v].push(frames[v]);	
-			logMsg(LOG_INFO, stringFormat("\t\tRead frames #%d", mCurrentFirstFrame));
+			logMsg(LOG_INFO, stringFormat("Read frames #%d", mCurrentFirstFrame), 2);
 		}
 		
 		mCurrentFirstFrame++;

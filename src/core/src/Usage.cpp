@@ -41,16 +41,32 @@ void exitWithMsg(returnValEnum errVal, string msg) {
     exit(errVal);
 }
 
-void logMsg(logTypeEnum type, string msg) {
+void logMsg(logTypeEnum type, string msg, int threadIdx) {
+    string head;
+    string tail = "\033[0m";
+    if (threadIdx == 1)
+        head = "\033[1;34m";
+    else if (threadIdx == 2)
+        head = "\033[1;32m";
+    else if (threadIdx == 3)
+        head = "\033[1;35m";
+    if (type == LOG_WARNING)
+        head = "\033[1;33m";
+    else if (type == LOG_ERROR)
+        head = "\035[1;31m";
     time_t result = time(nullptr);
     if (type == LOG_INFO) 
-        cout << "[  INFO ] " << msg << "\t\t\t - " << asctime(localtime(&result));
+        cout << head << "[  INFO ] " << msg << "\t\t\t - " << asctime(localtime(&result)) << tail;
     else if (type == LOG_WARNING)
-        cout << "[WARNING] " << msg << "\t\t\t - " << asctime(localtime(&result));
+        cout << head << "[WARNING] " << msg << "\t\t\t - " << asctime(localtime(&result)) << tail;
     else if (type == LOG_ERROR)
-        cout << "[ ERROR ] " << msg << "\t\t\t - " << asctime(localtime(&result));
+        cout << head << "[ ERROR ] " << msg << "\t\t\t - " << asctime(localtime(&result)) << tail;
     else 
-        cerr << "[ DEBUG ] " << msg << "\t\t\t - " << asctime(localtime(&result));
+        cerr << head << "[ DEBUG ] " << msg << "\t\t\t - " << asctime(localtime(&result)) << tail;
+}
+
+void logMsg(logTypeEnum type, string msg) {
+    logMsg(type, msg, 0);
 }
 
 Mat getRotationMatrix(double yaw, double pitch, double roll) {

@@ -86,7 +86,7 @@ void RealtimeStreamMaker::media_configure(GstRTSPMediaFactory *factory, GstRTSPM
 }
 
 void RealtimeStreamMaker::runInBackground() {
-	g_print("stream ready at rtsp://127.0.0.1:8554/test\n");
+    logMsg(LOG_INFO, "stream ready at rtsp://127.0.0.1:8554/test", 1);
     g_main_loop_run(loop);
 }
 

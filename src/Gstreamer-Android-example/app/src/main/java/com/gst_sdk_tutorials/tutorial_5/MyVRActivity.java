@@ -47,6 +47,8 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
 
     MyRenderer mRenderer;
 
+    MyClient mSensorClient;
+
     static {
         System.loadLibrary("gstreamer_android");
         System.loadLibrary("my_rtsp_client");
@@ -64,14 +66,24 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
         }
     }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    private void initForSensors() {
+        mSEL = this;
 
-        initForSensors();
-        initGStreamer();
-        nativeInit();
+        if (!isExternalStorageWritable()) {
+            Log.i("HeadMovementPredictor", "Cannot write files");
+            finish();
+        }
 
+        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        mLastAccelerometerSet = false;
+        mLastMagnetometerSet = false;
+        mSensorManager.registerListener(mSEL, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(mSEL, mMagnetometer, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    private void initCardboard() {
         RajawaliCardboardView view = new RajawaliCardboardView(this);
         setContentView(view);
         setCardboardView(view);
@@ -95,25 +107,25 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
         view.setSurfaceRenderer(mRenderer);
     }
 
+    private void initSensorClient() {
+        mSensorClient = new MyClient(getString(R.string.addr), Integer.parseInt(getString(R.string.port)));
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        initGStreamer();
+        nativeInit();
+        initSensorClient();
+        initForSensors();
+        initCardboard();
+    }
+
     @Override
     protected void onDestroy() {
         nativeFinalize();
         super.onDestroy();
-    }
-
-    private void onGStreamerInitialized () {
-        nativePause();
-    }
-
-    private void setMessage(final String message){}
-
-    private void passData(final int width, final int height, final byte[] data) {
-        final int oriLen = data.length;
-        final int[] rgbArr = convertYUV444toRGB8888(data, width, height);
-        final int len = rgbArr.length;
-        final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        bitmap.setPixels(rgbArr, 0, width, 0, 0, width, height);
-        mRenderer.changeTextureByBitmap(bitmap);
     }
 
     public static int[] convertYUV444toRGB8888(byte [] data, int width, int height) {
@@ -142,23 +154,6 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
         return 0xff000000 | (r<<16) | (g<<8) | b;
     }
 
-    private void initForSensors() {
-        mSEL = this;
-
-        if (!isExternalStorageWritable()) {
-            Log.i("HeadMovementPredictor", "Cannot write files");
-            finish();
-        }
-
-        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
-        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        mLastAccelerometerSet = false;
-        mLastMagnetometerSet = false;
-        mSensorManager.registerListener(mSEL, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        mSensorManager.registerListener(mSEL, mMagnetometer, SensorManager.SENSOR_DELAY_NORMAL);
-    }
-
     public boolean isExternalStorageWritable() {
         String state = Environment.getExternalStorageState();
         if (Environment.MEDIA_MOUNTED.equals(state)) {
@@ -179,12 +174,29 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
         if (mLastAccelerometerSet && mLastMagnetometerSet) {
             SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
             SensorManager.getOrientation(mR, mOrientation);
-            //appendLog(String.format("%f,%f,%f,%f,%f", mOrientation[0], mOrientation[1], mOrientation[2], mLastAccelerometer[0], mLastAccelerometer[1], mLastAccelerometer[2]));
+            if (mSensorClient != null && mIsPlaying) {
+                mSensorClient.sendMsg(String.format("%f,%f,%f", mOrientation[0], mOrientation[1], mOrientation[2]));
+            }
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+    private void onGStreamerInitialized () {
+        nativePause();
+    }
+
+    private void setMessage(final String message){}
+
+    private void passData(final int width, final int height, final byte[] data) {
+        final int oriLen = data.length;
+        final int[] rgbArr = convertYUV444toRGB8888(data, width, height);
+        final int len = rgbArr.length;
+        final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        bitmap.setPixels(rgbArr, 0, width, 0, 0, width, height);
+        mRenderer.changeTextureByBitmap(bitmap);
     }
 }

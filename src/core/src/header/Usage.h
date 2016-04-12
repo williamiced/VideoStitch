@@ -66,6 +66,7 @@ bool checkArguments(int argc, char** argv);
 
 void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);
+void logMsg(logTypeEnum type, string msg, int threadIdx);
 string stringFormat(const string fmt_str, ...); 
 Mat getRotationMatrix(double yaw, double pitch, double roll);
 Mat getZMatrix(double alpha);

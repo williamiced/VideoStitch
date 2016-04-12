@@ -16,7 +16,7 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]):
 	mRenderCenterV(2.f),
 	mRenderRange(2.f) {
 
-		srand(time(NULL));
+	srand(time(NULL));
 	if ( !checkArguments(argc, argv) )
 		exitWithMsg(E_BAD_ARGUMENTS);
 	/** 
@@ -28,6 +28,10 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]):
 	logMsg(LOG_INFO, "=== Do preprocess ===");
 	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
 	logMsg(LOG_INFO, "=== Data loaded complete ===");
+
+	logMsg(LOG_INFO, "=== Initialize Sensor Server ===");
+	mVSS = shared_ptr<SensorServer>( new SensorServer() );
+	logMsg(LOG_INFO, "=== Sensor Server is constructed ===");
 
 #ifdef REAL_TIME_STREAMING
 	logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");

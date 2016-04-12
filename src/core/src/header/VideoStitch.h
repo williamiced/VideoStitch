@@ -11,6 +11,7 @@
 #include <header/AlignProcessor.h>
 #include <header/MappingProjector.h>
 #include <header/RealtimeStreamMaker.h>
+#include <header/SensorServer.h>
 #include <header/Usage.h>
 
 #include "opencv2/core/cuda.hpp"
@@ -29,6 +30,7 @@ class VideoStitcher {
 		shared_ptr<VideoStablizer> mVS;
 		shared_ptr<MappingProjector> mMP;
 		shared_ptr<RealtimeStreamMaker> mRSM;
+		shared_ptr<SensorServer> mVSS;
 
 		transmitFuncPtr mTransmitFunc;
 		renderRegionUpdaterPtr mRenderRegionUpdater;
