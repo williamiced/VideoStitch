@@ -13,11 +13,11 @@ android {
 
     defaultConfig {
         applicationId "com.gst_sdk_tutorials.tutorial_5"
-        minSdkVersion 9
-        targetSdkVersion 14
+        minSdkVersion 16
+        targetSdkVersion 23
 
         ndk {
-            moduleName "tutorial-5"
+            moduleName "my_rtsp_client"
         }
     }
 
@@ -38,6 +38,7 @@ dependencies {
     // Just debug info
     println("$buildDir/libs")
     compile 'com.android.support:appcompat-v7:23.2.0'
+    compile project(':rajawalicardboard')
 }
 
 // Before compiling our app, prepare NDK code

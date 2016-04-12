@@ -1,0 +1,1 @@
+include ':app', ':wear', ':wear-example', ':rajawali', ':vuforia', ':vr', ':examples'

@@ -35,7 +35,6 @@ static pthread_key_t current_jni_env;
 static JavaVM *java_vm;
 static jfieldID custom_data_field_id;
 static jmethodID set_message_method_id;
-static jmethodID test_toast_method_id;
 static jmethodID pass_data_method_id;
 static jmethodID on_gstreamer_initialized_method_id;
 
@@ -300,11 +299,10 @@ static void gst_native_pause (JNIEnv* env, jobject thiz) {
 static jboolean gst_native_class_init (JNIEnv* env, jclass klass) {
     custom_data_field_id = (*env)->GetFieldID (env, klass, "native_custom_data", "J");
     set_message_method_id = (*env)->GetMethodID (env, klass, "setMessage", "(Ljava/lang/String;)V");
-    test_toast_method_id = (*env)->GetMethodID (env, klass, "testToast", "(Ljava/lang/String;)V");
     pass_data_method_id = (*env)->GetMethodID (env, klass, "passData", "(II[B)V");
     on_gstreamer_initialized_method_id = (*env)->GetMethodID (env, klass, "onGStreamerInitialized", "()V");
 
-    if (!custom_data_field_id || !set_message_method_id || !test_toast_method_id || !pass_data_method_id || !on_gstreamer_initialized_method_id) {
+    if (!custom_data_field_id || !set_message_method_id ||  !pass_data_method_id || !on_gstreamer_initialized_method_id) {
         /* We emit this message through the Android log instead of the GStreamer log because the later
          * has not been initialized yet.
          */
@@ -333,7 +331,7 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         __android_log_print (ANDROID_LOG_ERROR, "tutorial-2", "Could not retrieve JNIEnv");
         return 0;
     }
-    jclass klass = (*env)->FindClass (env, "com/gst_sdk_tutorials/tutorial_5/TestActivity");
+    jclass klass = (*env)->FindClass (env, "com/gst_sdk_tutorials/tutorial_5/MyVRActivity");
     (*env)->RegisterNatives (env, klass, native_methods, G_N_ELEMENTS(native_methods));
 
     pthread_key_create (&current_jni_env, detach_current_thread);
