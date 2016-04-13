@@ -28,23 +28,72 @@ void MappingProjector::setCameraParams(vector<Mat> Rs, vector<Mat> Ks) {
 		mK = Ks;
 }
 
+bool MappingProjector::checkSeriailFileExist(string filename) {
+	struct stat buffer;   
+  	return (stat (filename.c_str(), &buffer) == 0); 
+}
+
+void MappingProjector::loadSerialFile() {
+	mProjMasks.resize(mViewCount);
+	mProjMapX.resize(mViewCount);
+	mProjMapY.resize(mViewCount);
+	for (int i=0; i<mViewCount; i++) {
+		ifstream ifs(stringFormat("tmp/mask_%d.srl", i));
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> mProjMasks[i];
+
+        ifstream ifs2(stringFormat("tmp/projMapX_%d.srl", i));
+        boost::archive::binary_iarchive ia2(ifs2);
+        ia2 >> mProjMapX[i];
+
+        ifstream ifs3(stringFormat("tmp/projMapY_%d.srl", i));
+        boost::archive::binary_iarchive ia3(ifs3);
+        ia3 >> mProjMapY[i];
+	}
+	logMsg(LOG_INFO, "=== Load serial files from disk ===");
+}
+
+void MappingProjector::saveSerialFile() {
+	for (int i=0; i<mViewCount; i++) {
+		ofstream ofs(stringFormat("tmp/mask_%d.srl", i));
+        boost::archive::binary_oarchive oa(ofs);
+        oa << mProjMasks[i];
+
+		ofstream ofs2(stringFormat("tmp/projMapX_%d.srl", i));
+        boost::archive::binary_oarchive oa2(ofs2);
+        oa2 << mProjMapX[i];        
+
+        ofstream ofs3(stringFormat("tmp/projMapY_%d.srl", i));
+        boost::archive::binary_oarchive oa3(ofs3);
+        oa3 << mProjMapY[i];        
+	}	
+	logMsg(LOG_INFO, "=== Save serial files to disk ===");
+}
+
 void MappingProjector::calcProjectionMatrix() {
-	// Initialize warpers
-	setupWarpers();
-	logMsg(LOG_INFO, "=== Constructing UV checkup table ===");
-	constructUVcheckupTable();
-	logMsg(LOG_INFO, "=== Interpolate UV checkup table ===");
-	interpolateUVcheckupTable();
-	logMsg(LOG_INFO, "=== Done projection matrix calculation ===");
+#ifdef USING_SERIALIZABLE_RESULT
+	if ( checkSeriailFileExist("tmp/mask_0.srl") ) {
+		loadSerialFile();
+	} else {
+#endif
+		// Initialize warpers
+		setupWarpers();
+		logMsg(LOG_INFO, "=== Constructing UV checkup table ===");
+		constructUVcheckupTable();
+		logMsg(LOG_INFO, "=== Interpolate UV checkup table ===");
+		interpolateUVcheckupTable();
+		logMsg(LOG_INFO, "=== Done projection matrix calculation ===");
 
 #ifdef USE_HOMOGRAPHY_WARP	
-	refineCheckupTableByFeaturesMatching();
-	logMsg(LOG_INFO, "=== Refine complete ===");
+		refineCheckupTableByFeaturesMatching();
+		logMsg(LOG_INFO, "=== Refine complete ===");
 #endif	
 
-	if (STRATEGY_OUTPUT == OUTPUT_PARTIAL_PANO || STRATEGY_OUTPUT == OUTPUT_FULL_PANO) {
-		mBP->genWeightMapByMasks(mProjMasks);
-	}
+#ifdef USING_SERIALIZABLE_RESULT
+		saveSerialFile();
+	} 
+#endif
+	mBP->genWeightMapByMasks(mProjMasks);
 }
 
 void MappingProjector::setupWarpers() {

@@ -44,6 +44,7 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
     private SensorEventListener mSEL;
 
     private boolean mIsPlaying = false;
+    private boolean mIsInitialized = false;
 
     MyRenderer mRenderer;
 
@@ -92,6 +93,11 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (!mIsPlaying) {
+                    if (!mIsInitialized) {
+                        nativeInit();
+                        initSensorClient();
+                        mIsInitialized = true;
+                    }
                     nativePlay();
                     mIsPlaying = true;
                 } else {
@@ -116,8 +122,6 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
 
         initGStreamer();
-        nativeInit();
-        initSensorClient();
         initForSensors();
         initCardboard();
     }

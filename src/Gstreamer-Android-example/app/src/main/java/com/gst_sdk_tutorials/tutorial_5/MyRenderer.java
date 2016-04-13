@@ -10,6 +10,7 @@ import org.rajawali3d.cardboard.RajawaliCardboardRenderer;
 import org.rajawali3d.materials.Material;
 import org.rajawali3d.materials.textures.ATexture;
 import org.rajawali3d.materials.textures.Texture;
+import org.rajawali3d.materials.textures.TextureManager;
 import org.rajawali3d.math.vector.Vector3;
 import org.rajawali3d.primitives.Sphere;
 
@@ -20,6 +21,8 @@ public class MyRenderer extends RajawaliCardboardRenderer {
     private Sphere mSphere;
     private Bitmap mT1;
     private Bitmap mT2;
+    private Bitmap mBM = null;
+    private boolean mShouldUpdateTexture = false;
 
     public MyRenderer(Context context) {
         super(context);
@@ -39,12 +42,12 @@ public class MyRenderer extends RajawaliCardboardRenderer {
         getCurrentCamera().setFieldOfView(100);
     }
 
-    private static Sphere createPhotoSphereWithTexture(ATexture texture) {
+    private Sphere createPhotoSphereWithTexture(ATexture texture) {
         Material material = new Material();
         material.setColor(0);
 
         try {
-            material.addTexture(texture);
+            material.addTexture(mTextureManager.addTexture(texture));
         } catch (ATexture.TextureException e) {
             throw new RuntimeException(e);
         }
@@ -56,41 +59,30 @@ public class MyRenderer extends RajawaliCardboardRenderer {
         return sphere;
     }
 
+    @Override
+    protected void onRender(long ellapsedRealtime, double deltaTime) {
+        if (mShouldUpdateTexture) {
+            mSphereTexture.setBitmap(mBM);
+            mTextureManager.replaceTexture(mSphereTexture);
+            mShouldUpdateTexture = false;
+        }
+        super.onRender(ellapsedRealtime, deltaTime);
+    }
+
     public void changeTextureByBitmap(Bitmap bm) {
+        Bitmap lastBM = mBM;
+        mBM = bm;
+        if (lastBM != null)
+            lastBM.recycle();
+        mShouldUpdateTexture = true;
+        //mSphereTexture.setBitmap(bm);
+        //mTextureManager.replaceTexture(mSphereTexture);
+        //this.reloadTextures();
+        /*
         Texture t = (Texture) mSphere.getMaterial().getTextureList().get(0);
         t.setBitmap(bm);
         mSphere.getMaterial().getTextureList().set(0, t);
         this.reloadTextures();
-    }
-
-    public void changeImage(int resId) {
-        long startTime = System.currentTimeMillis();
-        long t1 = 0;
-        long t2 = 0;
-        long t3 = 0;
-        long t4 = 0;
-        long t5 = 0;
-        Texture t;
-        if (resId == R.drawable.panorama) {
-            t1 = System.currentTimeMillis();
-            t = (Texture) mSphere.getMaterial().getTextureList().get(0);
-            t2 = System.currentTimeMillis();
-            t.setBitmap(mT1);
-            t3 = System.currentTimeMillis();
-            mSphere.getMaterial().getTextureList().set(0, t);
-            Log.d("MyRenderer", "Set to normal");
-        } else  {
-            t1 = System.currentTimeMillis();
-            t = (Texture) mSphere.getMaterial().getTextureList().get(0);
-            t2 = System.currentTimeMillis();
-            t.setBitmap(mT2);
-            t3 = System.currentTimeMillis();
-            mSphere.getMaterial().getTextureList().set(0, t);
-            Log.d("MyRenderer", "Set to bloody");
-        }
-        t4 = System.currentTimeMillis();
-        this.reloadTextures();
-        t5 = System.currentTimeMillis();
-        Log.d("MyRenderer", "Time: " + (t1-startTime) + ", " + (t2-startTime) + ", " + (t3-startTime) + ", " + (t4-startTime) + ", " + (t5-startTime) );
+        */
     }
 }

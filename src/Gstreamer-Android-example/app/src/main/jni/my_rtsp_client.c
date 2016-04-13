@@ -164,7 +164,6 @@ static gboolean DisplayFrame(GstAppSink *fks, CustomData* data) {
         if ( !gst_buffer_map(buf, &info, GST_MAP_READ) )
             GST_DEBUG ("Buffer is unreadable");
         size = info.size;
-        gst_buffer_unmap (buf, &info);
         JNIEnv *env = get_jni_env();
 
         jbyteArray result = (*env)->NewByteArray(env, size);
@@ -172,6 +171,8 @@ static gboolean DisplayFrame(GstAppSink *fks, CustomData* data) {
         int i=0;
         for (i=0; i<size; i++)
             resultPtr[i] = info.data[i];
+
+        gst_buffer_unmap (buf, &info);
         (*env)->ReleasePrimitiveArrayCritical(env, result, resultPtr, 0);
 
         (*env)->CallVoidMethod(env, data->app, pass_data_method_id, width, height, result);

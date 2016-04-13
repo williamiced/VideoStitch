@@ -9,11 +9,19 @@
 #include <map>
 #include <boost/timer/timer.hpp>
 #include <omp.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <header/ExposureProcessor.h>
 #include <header/BlendingProcessor.h>
 #include <header/VideoLoader.h>
 #include <header/Params.h>
 #include <header/Usage.h>
+
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/split_free.hpp>
+#include <boost/serialization/vector.hpp>
+
 #include "opencv2/core/core.hpp"
 #include "opencv2/core/cuda.hpp"
 #include "opencv2/cudawarping.hpp"
@@ -43,6 +51,7 @@ class MappingProjector {
 		vector<MatchInfo> mMatchInfos;
 		vector< vector<Mat> > mHs;
 
+		bool checkSeriailFileExist(string filename);
 		void setupWarpers();
 		void defineWindowSize();
 		void initialData();
@@ -55,6 +64,8 @@ class MappingProjector {
 		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
 		int rad2Deg(float r);
 		float deg2Rad(int d);
+		void loadSerialFile();
+		void saveSerialFile();
 
 	public:
 		MappingProjector(int viewCount, Size viewSize);
@@ -66,5 +77,52 @@ class MappingProjector {
 		void checkFPS();
 		void saveMatchInfos(vector<MatchInfo> matchInfos);
 };
+
+BOOST_SERIALIZATION_SPLIT_FREE(Mat)
+namespace boost {
+namespace serialization {
+
+    /*** Mat ***/
+    template<class Archive>
+    void save(Archive & ar, const Mat& m, const unsigned int version)
+    {
+      size_t elemSize = m.elemSize(), elemType = m.type();
+
+      ar & m.cols;
+      ar & m.rows;
+      ar & elemSize;
+      ar & elemType; // element type.
+      size_t dataSize = m.cols * m.rows * m.elemSize();
+
+      //cout << "Writing matrix data rows, cols, elemSize, type, datasize: (" << m.rows << "," << m.cols << "," << m.elemSize() << "," << m.type() << "," << dataSize << ")" << endl;
+
+      for (size_t dc = 0; dc < dataSize; ++dc) {
+          ar & m.data[dc];
+      }
+    }
+
+    template<class Archive>
+    void load(Archive & ar, Mat& m, const unsigned int version)
+    {
+        int cols, rows;
+        size_t elemSize, elemType;
+
+        ar & cols;
+        ar & rows;
+        ar & elemSize;
+        ar & elemType;
+
+        m.create(rows, cols, elemType);
+        size_t dataSize = m.cols * m.rows * elemSize;
+
+        //cout << "reading matrix data rows, cols, elemSize, type, datasize: (" << m.rows << "," << m.cols << "," << m.elemSize() << "," << m.type() << "," << dataSize << ")" << endl;
+
+        for (size_t dc = 0; dc < dataSize; ++dc) {
+                  ar & m.data[dc];
+        }
+    }
+
+}
+}
 
 #endif // _H_MAPPING_PROJECTOR
