@@ -1,6 +1,6 @@
 #include <header/SensorServer.h>
 
-SensorServer::SensorServer() : mOrientation(new float[3]) {
+SensorServer::SensorServer() : mOrientation(new float[3]), mIsSensorWorks(false) {
     mServerThread = thread(&SensorServer::makeConnection, this);
 }
 
@@ -33,11 +33,16 @@ void SensorServer::makeConnection() {
 
         if (readBytes <= 0)
             break;
+        mIsSensorWorks = true;
         parseSensorInfo(buf);
     }
     logMsg(LOG_INFO, "Sensor connection loop END!!", 3);    
 
     delete[] buf;
+}
+
+bool SensorServer::isSensorWorks() {
+    return mIsSensorWorks;
 }
 
 void SensorServer::parseSensorInfo(char* buf) {
@@ -53,6 +58,26 @@ void SensorServer::parseSensorInfo(char* buf) {
     //logMsg(LOG_DEBUG, stringFormat("Orientation Updated: %f, %f, %f", mOrientation[0], mOrientation[1], mOrientation[2]));
 }
 
-float* SensorServer::getClientOrientation() {
-    return mOrientation;
+void SensorServer::getRenderArea(Rect& area, Mat& mask) {
+    float centerU = (mOrientation[0] + M_PI) / (2 * M_PI);
+    float centerV = (M_PI - fabs(mOrientation[2]) ) / M_PI;
+    float uOffset = (55.f / 360.f);
+    float vOffset = (55.f / 180.f);
+
+    float u0 = centerU - uOffset;
+    float u1 = centerU + uOffset;
+    float v0 = centerV - vOffset;
+    float v1 = centerV + vOffset;
+    
+    if (u0 < 0 || u1 > 1) {
+        u0 = 0.f;
+        u1 = 1.f;
+    } 
+    if (v0 < 0 || v1 > 1) {
+        v0 = 0.f;
+        v1 = 1.f;
+    }
+    
+    area = Rect(u0 * OUTPUT_PANO_WIDTH, v0 * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, (v1-v0) * OUTPUT_PANO_HEIGHT);
+    mask = Mat((v1-v0) * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, CV_8UC1, 1);
 }

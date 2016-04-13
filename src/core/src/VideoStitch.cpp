@@ -9,12 +9,7 @@ VideoStitcher::~VideoStitcher() {
 #endif
 }
 
-VideoStitcher::VideoStitcher(int argc, char* argv[]): 
-	mTransmitFunc(nullptr),
-	mRenderRegionUpdater(nullptr),
-	mRenderCenterU(-3.f),
-	mRenderCenterV(2.f),
-	mRenderRange(2.f) {
+VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 
 	srand(time(NULL));
 	if ( !checkArguments(argc, argv) )
@@ -83,12 +78,16 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	*/
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 
-#ifndef REAL_TIME_STREAMING
+//#ifndef REAL_TIME_STREAMING
 	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
-#endif
+//#endif
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
+	
+	Rect renderArea = Rect(0, 0, OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT);
+	Mat  renderMask = Mat(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC1, 1);
+
 	for (int f=0; f<duration; f++) {
 		bool isHealthyFrame = true;
 
@@ -110,36 +109,20 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		if (!isHealthyFrame)
 			continue;
 		
-		if (mRenderRegionUpdater != nullptr)
-			mRenderRegionUpdater(mRenderCenterU, mRenderCenterV, mRenderRange);
+		if (mVSS->isSensorWorks()) {
+			mVSS->getRenderArea(renderArea, renderMask);
+		}
 
-		if (STRATEGY_OUTPUT == OUTPUT_FULL_PANO)
-			mMP->renderPartialPano(targetCanvas, frames, Rect(0, 0, OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT) );
-		else if (STRATEGY_OUTPUT == OUTPUT_ONLY_WINDOW)
-			mMP->renderInterestArea(targetCanvas, frames, Point2f(mRenderCenterU, mRenderCenterV), mRenderRange);
-		else if (STRATEGY_OUTPUT == OUTPUT_PARTIAL_PANO)
-			mMP->renderPartialPano(targetCanvas, frames, Rect(OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3, OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3) );
+		mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask );
 		//mVS->stablize(targetCanvas);
 		
-		if (mTransmitFunc != nullptr)
-			mTransmitFunc(targetCanvas);
-
 #ifdef REAL_TIME_STREAMING
 		mRSM->streamOutFrame(targetCanvas);
 #else
 		(*outputVideo) << targetCanvas;
 #endif
-
-		//imwrite("test.png", targetCanvas(Rect(OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3, OUTPUT_PANO_WIDTH/3, OUTPUT_PANO_HEIGHT/3)));
+		(*outputVideo) << targetCanvas;
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
-}
-
-void VideoStitcher::registerCallbackFunc ( transmitFuncPtr p ) {
-	mTransmitFunc = p;
-}
-
-void VideoStitcher::registerUpdaterFunc ( renderRegionUpdaterPtr p ) {
-	mRenderRegionUpdater = p;
 }

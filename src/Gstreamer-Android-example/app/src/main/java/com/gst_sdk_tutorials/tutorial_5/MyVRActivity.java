@@ -176,6 +176,8 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
             SensorManager.getOrientation(mR, mOrientation);
             if (mSensorClient != null && mIsPlaying) {
                 mSensorClient.sendMsg(String.format("%f,%f,%f", mOrientation[0], mOrientation[1], mOrientation[2]));
+            } else {
+                //Log.d("MyVR", String.format("%f,%f,%f", mOrientation[0], mOrientation[1], mOrientation[2]));
             }
         }
     }

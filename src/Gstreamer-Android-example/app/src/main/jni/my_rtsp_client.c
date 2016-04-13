@@ -198,7 +198,7 @@ static void *app_function (void *userdata) {
 
     /* Build pipeline */
     //data->pipeline = gst_parse_launch("audiotestsrc ! audioconvert ! audioresample ! autoaudiosink", &error);
-    data->pipeline = gst_parse_launch("rtspsrc location=rtsp://192.168.1.188:8554/test latency=2000 ! decodebin ! videoconvert ! appsink name=mysink", &error);
+    data->pipeline = gst_parse_launch("rtspsrc location=rtsp://192.168.1.188:8554/test latency=0 ! decodebin ! videoconvert ! appsink name=mysink", &error);
     //data->pipeline = gst_parse_launch("videotestsrc ! decodebin ! videoconvert ! appsink name=mysink", &error);
     if (error) {
         gchar *message = g_strdup_printf("Unable to build pipeline: %s", error->message);

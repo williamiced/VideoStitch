@@ -104,7 +104,7 @@ RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[]) {
 
     // Set pipeline for app
     gst_rtsp_media_factory_set_launch(factory,
-                                  "( appsrc name=mysrc ! videoconvert ! capsfilter ! x264enc speed-preset=ultrafast tune=zerolatency ! rtph264pay name=pay0 pt=96 )");
+                                  "( appsrc name=mysrc is-live=true ! videoconvert ! capsfilter ! x264enc speed-preset=ultrafast tune=zerolatency ! rtph264pay name=pay0 pt=96 )");
     gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(factory), TRUE);
 
     g_signal_connect(factory, "media-configure", (GCallback)media_configure, NULL);

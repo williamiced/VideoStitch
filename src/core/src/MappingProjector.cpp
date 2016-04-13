@@ -153,7 +153,7 @@ void MappingProjector::refineCheckupTableByFeaturesMatching() {
 		Mat H = findHomography(matchesInIdx1, matchesInIdx2, CV_RANSAC, RANSAC_REPROJ_THRES, inliersMask);
 		cout << H << endl;
 
-		for (int j=0; j<inliersMask.size(); j++) {
+		for (int j=0; j<(int) inliersMask.size(); j++) {
 			cout << (int)inliersMask[j] << " ";
 		}
 
@@ -215,19 +215,10 @@ void MappingProjector::getUVbyAzimuthal(const float xOffset, const float yOffset
 	newPnt.y = phi + M_PI/2.f;
 }
 
-void MappingProjector::defineWindowSize() {
-	mOutputWindowSize = Size(OUTPUT_WINDOW_WIDTH, OUTPUT_WINDOW_HEIGHT);
-}
-
 void MappingProjector::initialData() {
 	int h, w;
-	if (STRATEGY_OUTPUT == OUTPUT_ONLY_WINDOW) {
-		w = OUTPUT_WINDOW_WIDTH;
-		h = OUTPUT_WINDOW_HEIGHT;
-	} else {
-		w = OUTPUT_PANO_WIDTH;
-		h = OUTPUT_PANO_HEIGHT;
-	}
+	w = OUTPUT_PANO_WIDTH;
+	h = OUTPUT_PANO_HEIGHT;
 	mWarpedImgs.resize(mViewCount);
 	for (int v=0; v<mViewCount; v++)
 		mWarpedImgs[v] = Mat::zeros(h, w, CV_8UC3);
@@ -241,10 +232,7 @@ void MappingProjector::initialData() {
 }
 
 Size MappingProjector::getOutputVideoSize() {
-	if (STRATEGY_OUTPUT == OUTPUT_ONLY_WINDOW)
-		return mOutputWindowSize;
-	else
-		return Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT);
+	return Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT);
 }
 
 void MappingProjector::checkFPS() {
@@ -258,43 +246,10 @@ MappingProjector::MappingProjector(int viewCount, Size viewSize) :
 	mFrameProcessed(0),
 	mViewCount(viewCount),
 	mViewSize(viewSize) {
-		defineWindowSize();
 		initialData();
 }
 
-void MappingProjector::renderInterestArea(Mat& outImg, vector<Mat> frames, Point2f center, float renderRange) {
-	/** 
-		u : [-PI, PI]
-		v : [0, PI]
-	*/
-	boost::timer::cpu_timer boostTimer;
-
-	outImg = Mat(OUTPUT_WINDOW_HEIGHT, OUTPUT_WINDOW_WIDTH, CV_8UC3);
-
-	tuneToMap(center);
-
-	#pragma omp parallel for collapse(2)
-	for (int y = 0; y < OUTPUT_WINDOW_HEIGHT; y++) {
-		for (int x = 0; x < OUTPUT_WINDOW_WIDTH; x++) {
-			Point2f newPnt;
-			getUVbyAzimuthal( (x - OUTPUT_WINDOW_WIDTH/2.f) / (OUTPUT_WINDOW_WIDTH/2.f), (y - OUTPUT_WINDOW_HEIGHT/2.f) / (OUTPUT_WINDOW_HEIGHT/2.f), center, newPnt);
-			tuneToMap(newPnt);
-
-			Mat mask = Mat::zeros(1, mViewCount, CV_8UC1);
-			vector<Vec3b> pixels = getPixelsValueByUV( newPnt.x, newPnt.y, frames, mask );
-			for (int v=0; v<mViewCount; v++) {
-				mWarpedImgs[v].at<Vec3b>(y, x) = pixels[v];
-				mProjMasks[v].at<uchar>(y, x) = mask.at<uchar>(0, v);
-			}
-		}
-	}
-
-	boostTimer.stop();
-	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
-    mFrameProcessed++;
-}
-
-void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea) {
+void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask) {
 	boost::timer::cpu_timer boostTimer;
 
 	outImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
