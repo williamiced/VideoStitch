@@ -12,7 +12,6 @@
 #include <atomic> 
 #include <thread>
 #include <queue>
-#include <mutex>
 
 #include <header/Params.h>
 #include <header/Usage.h>
@@ -40,8 +39,8 @@ class VideoLoader {
 		// For thread control
 		thread mBufferProducerThread;
 		atomic<bool> mIsProducerRun;
-		mutex mVideoListLock;
-		mutex mFrameBufferLock;
+
+		bool mIsFinish;
 
 		void loadVideos(char* flieName);
 		void calcFocalLengthInPixel(double crop, double hfov);
@@ -60,6 +59,8 @@ class VideoLoader {
 		void loadFeatureInfoFromFile(char* fileName, vector<MatchInfo>& matchInfos);
 		void loadPTOFile(char* calFileName);
 		void preloadVideo();
+		bool isFinish();
+		bool isCleanup();
 
     	VideoLoader(char* inputFileName, int duration);
     	~VideoLoader();

@@ -25,11 +25,13 @@ bool ExposureProcessor::needFeed() {
 ExposureProcessor::ExposureProcessor( vector<Point> c, int vc) : mCorners(c), mViewCount(vc) {
 	mNeedFeed = true;
 
+    /*
 	logMsg(LOG_INFO, " [ Initialize Cuda ... ]");
 	GpuMat m1(Mat(1, 1, CV_8UC1));
 	GpuMat m2(Mat(1, 1, CV_8UC1));
 	cv::cuda::add(m1, m2, m1);
 	logMsg(LOG_INFO, " [ Done Cuda initialization ] ");
+    */
 }
 
 ExposureProcessor::~ExposureProcessor() {
@@ -106,13 +108,15 @@ void ExposureProcessor::feed(const std::vector<Point> &corners, const std::vecto
 }
 
 void ExposureProcessor::apply(int index, Point /*corner*/, InputOutputArray image, InputArray /*mask*/) {
+/*
     Mat src = image.getMat().reshape(1);
     GpuMat srcImg( src );
 	double target = gains_(index, 0);
 	cv::cuda::multiply(srcImg, target, srcImg);
 	srcImg.download(src);
-    //double target = gains_(index, 0);
-    //cv::multiply(image, target, image);
+*/
+    double target = gains_(index, 0);
+    cv::multiply(image, target, image);
 }
 
 std::vector<double> ExposureProcessor::gains() const {

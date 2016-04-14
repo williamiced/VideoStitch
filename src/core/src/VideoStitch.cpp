@@ -89,6 +89,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	Mat  renderMask = Mat(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC1, 1);
 
 	for (int f=0; f<duration; f++) {
+		if (mVL->isCleanup())
+			break;
 		bool isHealthyFrame = true;
 
 		logMsg(LOG_INFO, stringFormat("\tProcess frame # %d", f ));

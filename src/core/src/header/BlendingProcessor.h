@@ -19,6 +19,10 @@ class BlendingProcessor : public cv::detail::Blender {
 		vector<Mat> mDilateMasks;
 		vector<Mat> mWeightMaps;
 
+		// New approach to speed up
+		vector<Mat> mAdjustWeightMaps;
+		vector<Mat> mFinalAdjustWeightMaps;
+
 	private:
 		float sharpness_;
     	UMat dst_weight_map_;
@@ -31,6 +35,9 @@ class BlendingProcessor : public cv::detail::Blender {
 		void setSharpness(float val) { sharpness_ = val; }
 		void genWeightMapByMasks(vector<Mat> masks);
 		void preProcess(Rect dst_roi, vector<Mat> imgs);
+		void newPreprocess();
+		void genFinalMap(vector<double> gains);
+		void getFinalMap(vector<Mat>& finalMap);
 
 		BlendingProcessor( int vc, Rect canvasROI );
 		~BlendingProcessor();

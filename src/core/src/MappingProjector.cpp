@@ -94,6 +94,7 @@ void MappingProjector::calcProjectionMatrix() {
 	} 
 #endif
 	mBP->genWeightMapByMasks(mProjMasks);
+	mBP->newPreprocess();
 }
 
 void MappingProjector::setupWarpers() {
@@ -310,36 +311,42 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 	for (int v=0; v<mViewCount; v++)
 		mWarpedImgs[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
 
-	#pragma omp parallel for collapse(2)
-	for (int y=y1; y<y2; y++) {
-		for (int x=x1; x<x2; x++) {
-			for (int v=0; v<mViewCount; v++) {
-				if (mProjMasks[v].at<uchar>(y, x) != 0) {
-					int px = mProjMapX[v].at<int>(y, x);
-					int py = mProjMapY[v].at<int>(y, x);
-					if (py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height)
-						mWarpedImgs[v].at<Vec3b>(y, x) = Vec3b(0, 0, 0);	
-					else
-						mWarpedImgs[v].at<Vec3b>(y, x) = frames[v].at<Vec3b>(py, px);
+	if ( mEP->needFeed() ) {
+		#pragma omp parallel for collapse(2)
+		for (int y=y1; y<y2; y++) {
+			for (int x=x1; x<x2; x++) {
+				for (int v=0; v<mViewCount; v++) {
+					if (mProjMasks[v].at<uchar>(y, x) != 0) {
+						int px = mProjMapX[v].at<int>(y, x);
+						int py = mProjMapY[v].at<int>(y, x);
+						if (py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height)
+							mWarpedImgs[v].at<Vec3b>(y, x) = Vec3b(0, 0, 0);	
+						else
+							mWarpedImgs[v].at<Vec3b>(y, x) = frames[v].at<Vec3b>(py, px);
+					}
+				}
+			}
+		}
+		
+		mEP->feedExposures(mWarpedImgs, mProjMasks);
+		mBP->genFinalMap(mEP->gains());
+		mBP->getFinalMap(mFinalBlendingMap);
+		outImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+	} else {
+		#pragma omp parallel for collapse(2) 
+		for (int y=y1; y<y2; y++) {
+			for (int x=x1; x<x2; x++) {
+				for (int v=0; v<mViewCount; v++) {
+					if (mProjMasks[v].at<uchar>(y, x) != 0) {
+						int px = mProjMapX[v].at<int>(y, x);
+						int py = mProjMapY[v].at<int>(y, x);
+						if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
+							outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y, x);
+					}
 				}
 			}
 		}
 	}
-	
-	//for (int v=0; v<mViewCount; v++) {
-	//	imwrite(stringFormat("Warped_%d.png", v), mWarpedImgs[v]);
-	//}
-
-	if ( mEP->needFeed() )
-		mEP->feedExposures(mWarpedImgs, mProjMasks);
-	mEP->doExposureCompensate(mWarpedImgs, mProjMasks, renderArea);
-
-	mBP->preProcess(renderArea, mWarpedImgs);
-	Mat outMask;
-	mBP->blend(outImg, outMask);
-	outImg.convertTo(outImg, CV_8UC3);
-
-	//drawMatches(outImg);
 
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );

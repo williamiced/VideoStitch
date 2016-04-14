@@ -50,6 +50,7 @@ class MappingProjector {
 		vector<Mat> mProjMasks;
 		vector<MatchInfo> mMatchInfos;
 		vector< vector<Mat> > mHs;
+		vector<Mat> mFinalBlendingMap;
 
 		bool checkSeriailFileExist(string filename);
 		void setupWarpers();

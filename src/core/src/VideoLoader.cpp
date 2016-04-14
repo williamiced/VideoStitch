@@ -46,6 +46,8 @@ void VideoLoader::preloadVideo() {
 		
 		mCurrentFirstFrame++;
 	}
+	if (mCurrentFirstFrame >= mDuration)
+		mIsFinish = true;
 	mIsProducerRun = false;
 }
 
@@ -89,17 +91,22 @@ bool VideoLoader::getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame
 		return false;
 	
 	if (!mIsProducerRun) {
-		mBufferProducerThread.join();
-		if (mCurrentFirstFrame < mDuration)
+		if (mBufferProducerThread.joinable())
+			mBufferProducerThread.join();
+		if (!mIsFinish) {
 			mBufferProducerThread = thread(&VideoLoader::preloadVideo, this);
+		} 
 	}
 
-	while (mFrameBuffers[vIdx].size() == 0) {
+	while (!mIsFinish && mFrameBuffers[vIdx].size() == 0) {
 		logMsg(LOG_WARNING, "No frame availble, wait for it...");
 	} 
+	
+	if (mIsFinish && mFrameBuffers[vIdx].size() == 0) {
+		return false;
+	}
 	frame = mFrameBuffers[vIdx].front();
 	mFrameBuffers[vIdx].pop();
-
 	return true;
 }
 
@@ -230,10 +237,19 @@ void VideoLoader::loadFeatureInfoFromFile(char* fileName, vector<MatchInfo>& mat
 	currentFM.clear();
 }
 
+bool VideoLoader::isFinish() {
+	return mIsFinish;
+}
+
+bool VideoLoader::isCleanup() {
+	return mIsFinish && (mFrameBuffers.size() == 0);
+}
+
 VideoLoader::VideoLoader(char* inputFileName, int duration):
 	mCurrentFirstFrame(0),
 	mDuration(duration) ,
-	mIsProducerRun(false) {
+	mIsProducerRun(false),
+	mIsFinish(false) {
 	if (inputFileName == 0)
 		exitWithMsg(E_FILE_NOT_EXISTS);
 	loadVideos(inputFileName);
