@@ -19,9 +19,8 @@ import java.util.ArrayList;
 public class MyRenderer extends RajawaliCardboardRenderer {
     private Texture mSphereTexture;
     private Sphere mSphere;
-    private Bitmap mT1;
-    private Bitmap mT2;
-    private Bitmap mBM = null;
+    private ArrayList<Bitmap> mTempBMList = null;
+    private Bitmap mKeepBM = null;
     private boolean mShouldUpdateTexture = false;
 
     public MyRenderer(Context context) {
@@ -30,11 +29,7 @@ public class MyRenderer extends RajawaliCardboardRenderer {
 
     @Override
     protected void initScene() {
-        mSphereTexture = new Texture("photo", R.drawable.panorama);
         mSphere = createPhotoSphereWithTexture(mSphereTexture);
-
-        mT1 = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.panorama);
-        mT2 = BitmapFactory.decodeResource(getContext().getResources(), R.drawable.panorama_bloody);
 
         getCurrentScene().addChild(mSphere);
 
@@ -46,11 +41,13 @@ public class MyRenderer extends RajawaliCardboardRenderer {
         Material material = new Material();
         material.setColor(0);
 
+        /*
         try {
-            material.addTexture(mTextureManager.addTexture(texture));
+            material.addTexture(mTextureManager.addTexture(mSphereTexture));
         } catch (ATexture.TextureException e) {
             throw new RuntimeException(e);
         }
+        */
 
         Sphere sphere = new Sphere(50, 64, 32);
         sphere.setScaleX(-1);
@@ -62,19 +59,40 @@ public class MyRenderer extends RajawaliCardboardRenderer {
     @Override
     protected void onRender(long ellapsedRealtime, double deltaTime) {
         if (mShouldUpdateTexture) {
-            mSphereTexture.setBitmap(mBM);
+            if (mKeepBM != null)
+                mKeepBM.recycle();
+            mKeepBM = mTempBMList.get(mTempBMList.size() - 1);
+
+            // Recycle all
+            for (int i=0; i<mTempBMList.size()-1; i++)
+                mTempBMList.get(i).recycle();
+            mTempBMList.clear();
+
+            mSphereTexture.setBitmap(mKeepBM);
             mTextureManager.replaceTexture(mSphereTexture);
+
             mShouldUpdateTexture = false;
+            Log.d("MyRender", "Update texture: " + mSphereTexture.getHeight() + ", " + mSphereTexture.getWidth());
         }
         super.onRender(ellapsedRealtime, deltaTime);
     }
 
     public void changeTextureByBitmap(Bitmap bm) {
-        Bitmap lastBM = mBM;
-        mBM = bm;
-        if (lastBM != null)
-            lastBM.recycle();
-        mShouldUpdateTexture = true;
+        if (mTempBMList == null) {
+            mTempBMList = new ArrayList<Bitmap>();
+            mSphereTexture = new Texture("SphereTexture", bm);
+            try {
+                mSphere.getMaterial().addTexture(mTextureManager.addTexture(mSphereTexture));
+            } catch (ATexture.TextureException e) {
+                e.printStackTrace();
+            }
+            Log.d("MyRenderer", "Add texture for the first time: ");
+            mTempBMList.add(bm);
+        } else {
+            mTempBMList.add(bm);
+            mShouldUpdateTexture = true;
+            Log.d("MyRenderer", "Set shouldupdateTexture");
+        }
         //mSphereTexture.setBitmap(bm);
         //mTextureManager.replaceTexture(mSphereTexture);
         //this.reloadTextures();

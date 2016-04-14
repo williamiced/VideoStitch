@@ -10,6 +10,6 @@
     <string name="cant_read_folder">folder cannot be read</string>
     <string name="icon">Icon</string>
     <string name="app_name">GStreamer Play</string>
-    <string name="addr">192.168.1.188</string>
+    <string name="addr">140.112.29.188</string>
     <string name="port">9527</string>
 </resources>

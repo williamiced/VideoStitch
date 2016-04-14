@@ -114,16 +114,16 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
     }
 
     private void initSensorClient() {
-        mSensorClient = new MyClient(getString(R.string.addr), Integer.parseInt(getString(R.string.port)));
+        //mSensorClient = new MyClient(getString(R.string.addr), Integer.parseInt(getString(R.string.port)));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        initGStreamer();
         initForSensors();
         initCardboard();
+        initGStreamer();
     }
 
     @Override
@@ -179,7 +179,8 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
             SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
             SensorManager.getOrientation(mR, mOrientation);
             if (mSensorClient != null && mIsPlaying) {
-                mSensorClient.sendMsg(String.format("%f,%f,%f", mOrientation[0], mOrientation[1], mOrientation[2]));
+                ;
+                //mSensorClient.sendMsg(String.format("%f,%f,%f", mOrientation[0], mOrientation[1], mOrientation[2]));
             } else {
                 //Log.d("MyVR", String.format("%f,%f,%f", mOrientation[0], mOrientation[1], mOrientation[2]));
             }
