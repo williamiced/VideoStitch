@@ -33,12 +33,22 @@ void SensorServer::makeConnection() {
 
         if (readBytes <= 0)
             break;
+        if (!mIsSensorWorks)
+            saveClientIP(inet_ntoa(clientAddr.sin_addr));
         mIsSensorWorks = true;
         parseSensorInfo(buf);
     }
     logMsg(LOG_INFO, "Sensor connection loop END!!", 3);    
 
     delete[] buf;
+}
+
+void SensorServer::saveClientIP(char* ip) {
+    mClientIP = string(ip);
+}
+
+string SensorServer::getClientIP() {
+    return mClientIP;
 }
 
 bool SensorServer::isSensorWorks() {
@@ -78,6 +88,14 @@ void SensorServer::getRenderArea(Rect& area, Mat& mask) {
         v1 = 1.f;
     }
     
+    // debug
+    /*
+    u0 = 0.f;
+    u1 = 1.f;
+    v0 = 0.f;
+    v1 = 1.f;
+    */
+
     area = Rect(u0 * OUTPUT_PANO_WIDTH, v0 * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, (v1-v0) * OUTPUT_PANO_HEIGHT);
     mask = Mat((v1-v0) * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, CV_8UC1, 1);
 }

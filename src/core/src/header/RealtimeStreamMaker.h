@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <queue>
+#include <string>
 
 #include <header/Params.h>
 #include <header/Usage.h>
@@ -18,28 +19,29 @@
 using namespace std;
 using namespace cv;
 
-typedef struct {
-  gboolean white;
+typedef struct _App {
+  GstElement* pipeline;
+  GstElement* appsrc;
+  GMainLoop* loop;
+  guint sourceid;
   GstClockTime timestamp;
-} MyContext;
+} MyApp;
 
 class RealtimeStreamMaker {
 	private:
 		static queue<Mat> frameQueue;
 		static Mat latestFrame;
-		static GMainLoop* loop;
-		static GstRTSPServer *server;
-		static GstRTSPMountPoints  *mounts;
-		static GstRTSPMediaFactory* factory;
+		static MyApp* mApp;
 		thread* serverThread;
 		
 	public:
-		static void need_data(GstElement *appsrc, guint unused, MyContext *ctx);
-		static void media_configure(GstRTSPMediaFactory *factory, GstRTSPMedia *media, gpointer user_data);
+		static gboolean read_data(MyApp* app);
+		static void start_feed (GstElement* pl, guint size, MyApp* app);
+		static void stop_feed (GstElement* pl, MyApp* app);
 		static void runInBackground();
 		void waitForServerFinish();
 		void streamOutFrame(Mat frame);
-    	RealtimeStreamMaker(int argc, char* argv[]);
+    	RealtimeStreamMaker(int argc, char* argv[], string clientIP);
     	~RealtimeStreamMaker();
 };
 

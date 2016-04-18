@@ -12,6 +12,7 @@
 #include <atomic> 
 #include <thread>
 #include <queue>
+#include <mutex> 
 
 #include <header/Params.h>
 #include <header/Usage.h>
@@ -35,6 +36,7 @@ class VideoLoader {
 		map< string, Mat > mCalibrationMatrix;
 		int mCurrentFirstFrame;
 		int mDuration;
+		mutex mBufLock;
 
 		// For thread control
 		thread mBufferProducerThread;
@@ -44,6 +46,7 @@ class VideoLoader {
 
 		void loadVideos(char* flieName);
 		void calcFocalLengthInPixel(double crop, double hfov);
+		bool wakeLoaderUp();
 	public:
 		double getFocalLength();
 		int getVideoListSize();

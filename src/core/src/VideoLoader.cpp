@@ -24,7 +24,7 @@ void VideoLoader::loadVideos(char* fileName) {
 
 void VideoLoader::preloadVideo() {
 	mIsProducerRun = true;
-	while (mFrameBuffers[0].size() < VIDEO_CONTAINER_SIZE && mCurrentFirstFrame < mDuration) {
+	while (mFrameBuffers[0].size() < VIDEO_CONTAINER_SIZE && !mIsFinish) {
 		vector<Mat> frames;
 		frames.resize(mVideoList.size());
 		bool isFramesHealthy = true;
@@ -39,15 +39,17 @@ void VideoLoader::preloadVideo() {
 		if (!isFramesHealthy) {
 			logMsg(LOG_WARNING, stringFormat("Frames #%d in videos are not read correctly", mCurrentFirstFrame), 2);
 		} else {
+			mBufLock.lock();
 			for (unsigned int v=0; v<mVideoList.size(); v++) 
 				mFrameBuffers[v].push(frames[v]);	
+			mBufLock.unlock();
 			logMsg(LOG_INFO, stringFormat("Read frames #%d", mCurrentFirstFrame), 2);
 		}
 		
 		mCurrentFirstFrame++;
+		if (mCurrentFirstFrame >= mDuration)
+			mIsFinish = true;
 	}
-	if (mCurrentFirstFrame >= mDuration)
-		mIsFinish = true;
 	mIsProducerRun = false;
 }
 
@@ -87,26 +89,32 @@ int VideoLoader::getVideoCount() {
 }
 
 bool VideoLoader::getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame) {
-	if (mCurrentFirstFrame >= mDuration && mFrameBuffers[vIdx].size() == 0)
+	if (isCleanup())
 		return false;
+
+	while (mFrameBuffers[vIdx].size() == 0)	 {
+		if (!mIsProducerRun)
+			wakeLoaderUp();
+	}
 	
+	mBufLock.lock();
+	frame = mFrameBuffers[vIdx].front();
+	mFrameBuffers[vIdx].pop();
+	mBufLock.unlock();
+	wakeLoaderUp();
+
+	return true;
+}
+
+bool VideoLoader::wakeLoaderUp() {
 	if (!mIsProducerRun) {
 		if (mBufferProducerThread.joinable())
 			mBufferProducerThread.join();
-		if (!mIsFinish) {
-			mBufferProducerThread = thread(&VideoLoader::preloadVideo, this);
-		} 
+		
+		if (mIsFinish)
+			return false;
+		mBufferProducerThread = thread(&VideoLoader::preloadVideo, this);
 	}
-
-	while (!mIsFinish && mFrameBuffers[vIdx].size() == 0) {
-		logMsg(LOG_WARNING, "No frame availble, wait for it...");
-	} 
-	
-	if (mIsFinish && mFrameBuffers[vIdx].size() == 0) {
-		return false;
-	}
-	frame = mFrameBuffers[vIdx].front();
-	mFrameBuffers[vIdx].pop();
 	return true;
 }
 

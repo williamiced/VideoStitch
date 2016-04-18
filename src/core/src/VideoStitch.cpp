@@ -28,11 +28,6 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	mVSS = shared_ptr<SensorServer>( new SensorServer() );
 	logMsg(LOG_INFO, "=== Sensor Server is constructed ===");
 
-#ifdef REAL_TIME_STREAMING
-	logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
-	mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv) );
-#endif
-
 	logMsg(LOG_INFO, "=== Initialize Video Stablizer ===");
 	mVS = shared_ptr<VideoStablizer>(new VideoStablizer());
 
@@ -63,6 +58,14 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 
 	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
 	mMP->calcProjectionMatrix();
+
+	#ifdef REAL_TIME_STREAMING
+		logMsg(LOG_INFO, "=== Wait for user to connet ===");
+		while ( !mVSS->isSensorWorks() );
+
+		logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
+		mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
+	#endif
 }
 
 void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
@@ -120,10 +123,10 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		
 #ifdef REAL_TIME_STREAMING
 		mRSM->streamOutFrame(targetCanvas);
+		//(*outputVideo) << targetCanvas;
 #else
 		(*outputVideo) << targetCanvas;
 #endif
-		(*outputVideo) << targetCanvas;
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");

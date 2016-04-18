@@ -1,124 +1,96 @@
 #include <header/RealtimeStreamMaker.h>
 
-GMainLoop* RealtimeStreamMaker::loop = nullptr;
-GstRTSPServer* RealtimeStreamMaker::server = nullptr;
-GstRTSPMountPoints* RealtimeStreamMaker::mounts = nullptr;
-GstRTSPMediaFactory* RealtimeStreamMaker::factory = nullptr;
 queue<Mat> RealtimeStreamMaker::frameQueue;
 Mat RealtimeStreamMaker::latestFrame = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);;
+MyApp* RealtimeStreamMaker::mApp;
 
 void RealtimeStreamMaker::streamOutFrame(Mat frame) {
 	frameQueue.push(frame);
-    //logMsg(LOG_DEBUG, stringFormat("Frame queue now contains %d frames", frameQueue.size() ) );
 }
 
-void RealtimeStreamMaker::need_data(GstElement *appsrc, guint unused, MyContext *ctx) {
+gboolean RealtimeStreamMaker::read_data(MyApp* app) {
+
+}
+
+void RealtimeStreamMaker::start_feed (GstElement* pl, guint unused_size, MyApp* app) {
     GstBuffer *buffer;
     guint size;
     GstFlowReturn ret;
-
     GstMapInfo info;
-    /*
-    Mat latestFrame = imread("dog.jpg");
-    cvtColor(latestFrame, latestFrame, CV_BGR2RGB);
-    resize(latestFrame, latestFrame, Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT) );
-    size = latestFrame.cols * latestFrame.rows * latestFrame.channels();
-    */
 
-    //static bool isFirstTime = true;
-    //if (!isFirstTime)
-    //    return;
-    
     if (frameQueue.size() > 0) {
-    	latestFrame = frameQueue.front();
-    	cvtColor(latestFrame, latestFrame, CV_BGR2RGB);
-    	frameQueue.pop();
+        latestFrame = frameQueue.front();
+        cvtColor(latestFrame, latestFrame, CV_BGR2RGB);
+        frameQueue.pop();
     }
-    
-	size = latestFrame.cols * latestFrame.rows * latestFrame.channels();
-	buffer = gst_buffer_new_allocate(NULL, size, NULL);	
-	
-	gst_buffer_map (buffer, &info, GST_MAP_WRITE);
-	memcpy (info.data, latestFrame.data, size);
-	gst_buffer_unmap (buffer, &info);
 
-	/* Increment the timestamp for 25 fps */
-    GST_BUFFER_PTS(buffer)      = ctx->timestamp;
-    GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, 40);
-    ctx->timestamp             += GST_BUFFER_DURATION(buffer);
+    size = latestFrame.cols * latestFrame.rows * latestFrame.channels();
+    buffer = gst_buffer_new_allocate(NULL, size, NULL);     
 
-    g_signal_emit_by_name(appsrc, "push-buffer", buffer, &ret);
+    gst_buffer_map (buffer, &info, GST_MAP_WRITE);
+    memcpy (info.data, latestFrame.data, size);
+    gst_buffer_unmap (buffer, &info);
 
+    // For 30 fps
+    GST_BUFFER_PTS(buffer)      = app->timestamp;
+    GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, 33);
+    app->timestamp             += GST_BUFFER_DURATION(buffer);
+
+    g_signal_emit_by_name(app->appsrc, "push-buffer", buffer, &ret);
     gst_buffer_unref(buffer);
+
 }
 
-void RealtimeStreamMaker::media_configure(GstRTSPMediaFactory *factory, GstRTSPMedia *media, gpointer user_data) {
-    GstElement *element, *appsrc;
-    MyContext  *ctx;
-
-    /* get the element used for providing the streams of the media */
-    element = gst_rtsp_media_get_element(media);
-
-    /* get our appsrc, we named it 'mysrc' with the name property */
-    appsrc = gst_bin_get_by_name_recurse_up(GST_BIN(element), "mysrc");
-
-    /* this instructs appsrc that we will be dealing with timed buffer */
-    gst_util_set_object_arg(G_OBJECT(appsrc), "format", "time");
-
-    /* configure the caps of the video */
-    g_object_set(G_OBJECT(appsrc), "caps",
-             gst_caps_new_simple("video/x-raw",
-                                 "format", G_TYPE_STRING, "RGB",
-                                 "width", G_TYPE_INT, OUTPUT_PANO_WIDTH,
-                                 "height", G_TYPE_INT, OUTPUT_PANO_HEIGHT,
-                                 "framerate", GST_TYPE_FRACTION, 25, 1, NULL), NULL);
-
-    ctx = g_new0(MyContext, 1);
-    ctx->timestamp = 0;
-
-    /* make sure the data is freed when the media is gone */
-    g_object_set_data_full(G_OBJECT(media), "my-extra-data", ctx, (GDestroyNotify)g_free);
-
-    /* install the callback that will be called when a buffer is needed */
-    g_signal_connect(appsrc, "need-data", (GCallback)need_data, ctx);
-    gst_object_unref(appsrc);
-    gst_object_unref(element);
+void RealtimeStreamMaker::stop_feed (GstElement* pl, MyApp* app) {
+    /*
+    if (app->sourceid != 0) {
+        logMsg(LOG_DEBUG, "stop feeding", 1);
+        g_source_remove (app->sourceid);
+        app->sourceid = 0;
+    }
+    */
 }
 
 void RealtimeStreamMaker::runInBackground() {
     logMsg(LOG_INFO, "stream ready at rtsp://127.0.0.1:8554/test", 1);
-    g_main_loop_run(loop);
+    gst_element_set_state (mApp->pipeline, GST_STATE_PLAYING);
+    g_main_loop_run(mApp->loop);
 }
 
 void RealtimeStreamMaker::waitForServerFinish() {
 	serverThread->join();
+
+    /* clean up */
+    gst_element_set_state (mApp->pipeline, GST_STATE_NULL);
+    gst_object_unref (GST_OBJECT (mApp->pipeline));
+    g_main_loop_unref (mApp->loop);
 }
 
-RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[]) {
+RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP) {
 	gst_init(&argc, &argv);
 
-	loop   = g_main_loop_new(NULL, FALSE);
-    server = gst_rtsp_server_new();
-    mounts  = gst_rtsp_server_get_mount_points(server);
-    factory = gst_rtsp_media_factory_new();
+    mApp = g_new0(MyApp, 1);
+	mApp->timestamp = 0;
+    mApp->loop   = g_main_loop_new(NULL, FALSE);
+    mApp->pipeline = gst_parse_launch(
+        stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc pass=qual quantizer=20 tune=zerolatency ! rtph264pay ! udpsink host=localhost host=%s port=5000 ", clientIP.c_str()).c_str(), NULL);
+    g_assert (mApp->pipeline);
 
-    // Set pipeline for app
-    gst_rtsp_media_factory_set_launch(factory,
-                                  "( appsrc name=mysrc is-live=true ! videoconvert ! capsfilter ! x264enc speed-preset=ultrafast tune=zerolatency ! rtph264pay name=pay0 pt=96 )");
-    gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(factory), TRUE);
+    mApp->appsrc = gst_bin_get_by_name (GST_BIN(mApp->pipeline), "mysrc");
+    g_signal_connect (mApp->appsrc, "need-data", G_CALLBACK (start_feed), mApp);
 
-    g_signal_connect(factory, "media-configure", (GCallback)media_configure, NULL);
-    gst_rtsp_mount_points_add_factory(mounts, "/test", factory);
-
-    /* don't need the ref to the mounts anymore */
-    g_object_unref(mounts);
-
-    /* attach the server to the default maincontext */
-    gst_rtsp_server_attach(server, NULL);
+    GstCaps* caps = gst_caps_new_simple ("video/x-raw",
+                     "format", G_TYPE_STRING, "RGB",
+                     "width", G_TYPE_INT, OUTPUT_PANO_WIDTH,
+                     "height", G_TYPE_INT, OUTPUT_PANO_HEIGHT,
+                     "framerate", GST_TYPE_FRACTION, 30, 1,
+                     NULL);
+    g_object_set (G_OBJECT (mApp->appsrc), "caps", caps, NULL);
+    gst_element_set_state (mApp->pipeline, GST_STATE_PLAYING);
 
     serverThread = new thread(runInBackground);
+    //runInBackground();
 }
 
 RealtimeStreamMaker::~RealtimeStreamMaker() {
-
 }
