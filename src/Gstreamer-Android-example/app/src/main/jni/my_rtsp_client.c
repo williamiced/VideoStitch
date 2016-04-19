@@ -159,7 +159,7 @@ static gboolean DisplayFrame(GstAppSink *fks, CustomData* data) {
         gst_structure_get_int(pStructure, "bpp", &bpp);
         format = gst_structure_get_string(pStructure, "format");
 
-        //GST_DEBUG("Format: %s", format);
+        GST_DEBUG("Format: %s", format);
 
         if ( !gst_buffer_map(buf, &info, GST_MAP_READ) )
             GST_DEBUG ("Buffer is unreadable");
@@ -198,10 +198,14 @@ static void *app_function (void *userdata) {
     g_main_context_push_thread_default(data->context);
 
     /* Build pipeline */
-    //data->pipeline = gst_parse_launch("audiotestsrc ! audioconvert ! audioresample ! autoaudiosink", &error);
+    // RTSP Ver.
     //data->pipeline = gst_parse_launch("rtspsrc location=rtsp://140.112.29.188:8554/test latency=2000 ! decodebin ! videoconvert ! appsink name=mysink", &error);
-    data->pipeline = gst_parse_launch("udp://0.0.0.0:5000 ! application/x-rtp ! rtph264depay ! h264parse ! decodebin ! videoconvert ! appsink name=mysink", &error);
-    //data->pipeline = gst_parse_launch("videotestsrc ! decodebin ! videoconvert ! appsink name=mysink", &error);
+
+    // UDP Ver.
+    //data->pipeline = gst_parse_launch("udp://0.0.0.0:5000 ! application/x-rtp ! rtph264depay ! h264parse ! decodebin ! videoconvert ! appsink name=mysink", &error);
+
+    // TCP Ver.
+    data->pipeline = gst_parse_launch("tcpclientsrc host=140.112.29.188 port=5000 ! h264parse ! decodebin ! videoconvert ! appsink name=mysink", &error);
     if (error) {
         gchar *message = g_strdup_printf("Unable to build pipeline: %s", error->message);
         g_clear_error (&error);

@@ -50,6 +50,12 @@ VideoStitch: $(OBJ_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? $(CFLAGS) -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS)
 
+SaliencyMapExtractor:
+	$(CC) $(CFLAGS) $? -I. tools/SaliencyMapExtractor/SaliencyMapExtractor.cpp -o $(BIN)/$@ $(LDFLAGS)
+
+runSME:
+	$(BIN)/SaliencyMapExtractor BinWangApr2014 results/pano_960_480.avi 
+
 socket: $(OBJ_FILES) 
 	$(CC) $? -I$(SRC) -I. src/cardboard/VSSocket.cpp src/cardboard/server.cpp -o $(BIN)/$@ $(LDFLAGS)
 
@@ -78,7 +84,7 @@ run:
 	@mkdir -p $(TMP)
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
-	$(BIN)/VideoStitch --input $(DATA)/inputVideo-1920.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 1000 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt
+	$(BIN)/VideoStitch --input $(DATA)/inputVideo-1920.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 1500 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt
 
 runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi

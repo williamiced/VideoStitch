@@ -25,6 +25,7 @@ typedef struct _App {
   GMainLoop* loop;
   guint sourceid;
   GstClockTime timestamp;
+  GTimer* timer;
 } MyApp;
 
 class RealtimeStreamMaker {

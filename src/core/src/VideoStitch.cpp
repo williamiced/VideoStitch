@@ -61,10 +61,17 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 
 	#ifdef REAL_TIME_STREAMING
 		logMsg(LOG_INFO, "=== Wait for user to connet ===");
+#ifdef USING_UDP
 		while ( !mVSS->isSensorWorks() );
 
 		logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
 		mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
+#else // When using TCP, server should be set up before the client connection
+		logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
+		mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
+
+		while ( !mVSS->isSensorWorks() );
+#endif
 	#endif
 }
 

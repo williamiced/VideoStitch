@@ -89,12 +89,10 @@ void SensorServer::getRenderArea(Rect& area, Mat& mask) {
     }
     
     // debug
-    /*
     u0 = 0.f;
     u1 = 1.f;
     v0 = 0.f;
     v1 = 1.f;
-    */
 
     area = Rect(u0 * OUTPUT_PANO_WIDTH, v0 * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, (v1-v0) * OUTPUT_PANO_HEIGHT);
     mask = Mat((v1-v0) * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, CV_8UC1, 1);
