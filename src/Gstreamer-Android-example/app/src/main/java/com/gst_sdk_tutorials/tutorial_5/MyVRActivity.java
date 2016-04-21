@@ -3,6 +3,9 @@ package com.gst_sdk_tutorials.tutorial_5;
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -22,7 +25,7 @@ import org.freedesktop.gstreamer.GStreamer;
 import org.rajawali3d.cardboard.RajawaliCardboardView;
 
 public class MyVRActivity extends CardboardActivity implements SensorEventListener {
-    private native void nativeInit();     // Initialize native code, build pipeline, etc
+    private native void nativeInit(boolean isTCP);     // Initialize native code, build pipeline, etc
     private native void nativeFinalize(); // Destroy pipeline and shutdown native code
     private native void nativePlay();     // Set pipeline to PLAYING
     private native void nativePause();    // Set pipeline to PAUSED
@@ -42,6 +45,7 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
     private float[] mOrientation = new float[3];
 
     private SensorEventListener mSEL;
+    private Context mContext;
 
     private boolean mIsPlaying = false;
     private boolean mIsInitialized = false;
@@ -94,12 +98,33 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
             public boolean onTouch(View v, MotionEvent event) {
                 if (!mIsPlaying) {
                     if (!mIsInitialized) {
-                        nativeInit();
-                        initSensorClient();
-                        mIsInitialized = true;
+                        new AlertDialog.Builder(mContext)
+                                .setTitle("Connect to server")
+                                .setMessage("Which way? ")
+                                .setPositiveButton("TCP", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        nativeInit(true);
+                                        initSensorClient();
+                                        mIsInitialized = true;
+                                        nativePlay();
+                                        mIsPlaying = true;
+                                    }
+                                })
+                                .setNegativeButton("UDP", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        nativeInit(false);
+                                        initSensorClient();
+                                        mIsInitialized = true;
+                                        nativePlay();
+                                        mIsPlaying = true;
+                                    }
+                                })
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .show();
+                    } else {
+                        nativePlay();
+                        mIsPlaying = true;
                     }
-                    nativePlay();
-                    mIsPlaying = true;
                 } else {
                     nativePause();
                     mIsPlaying = false;
@@ -121,6 +146,7 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mContext = this;
         initForSensors();
         initCardboard();
         initGStreamer();
@@ -195,7 +221,14 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
         nativePause();
     }
 
-    private void setMessage(final String message){}
+    private void setMessage(final String message){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(mContext, message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
 
     private void passData(final int width, final int height, final byte[] data) {
         final int oriLen = data.length;

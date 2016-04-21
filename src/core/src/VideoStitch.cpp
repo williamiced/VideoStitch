@@ -105,6 +105,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 
 		logMsg(LOG_INFO, stringFormat("\tProcess frame # %d", f ));
 		Mat targetCanvas;
+		Mat smallCanvas;
 		vector<Mat> frames;
 		for (int v=0; v<seqCount; v++) {
 			Mat frame;
@@ -126,6 +127,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		}
 
 		mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask );
+		mMP->renderSmallSizePano(smallCanvas, frames);
+		imwrite("tmp.png", smallCanvas);
 		//mVS->stablize(targetCanvas);
 		
 #ifdef REAL_TIME_STREAMING

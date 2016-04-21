@@ -353,6 +353,28 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
     mFrameProcessed++;	
 }
 
+void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
+	outImg = Mat::zeros(DOWN_SAMPLE_MAP_HEIGHT, DOWN_SAMPLE_MAP_WIDTH, CV_8UC3);
+	float ratioX = (float) OUTPUT_PANO_WIDTH / DOWN_SAMPLE_MAP_WIDTH;
+	float ratioY = (float) OUTPUT_PANO_HEIGHT / DOWN_SAMPLE_MAP_HEIGHT;
+
+	#pragma omp parallel for collapse(2) 
+	for (int y=0; y<DOWN_SAMPLE_MAP_HEIGHT; y++) {
+		for (int x=0; x<DOWN_SAMPLE_MAP_WIDTH; x++) {
+			int oriY = (int) (y * ratioY);
+			int oriX = (int) (x * ratioX);
+			for (int v=0; v<mViewCount; v++) {
+				if (mProjMasks[v].at<uchar>(oriY, oriX) != 0) {
+					int px = mProjMapX[v].at<int>(oriY, oriX);
+					int py = mProjMapY[v].at<int>(oriY, oriX);
+					if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
+						outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(oriY, oriX);
+				}
+			}
+		}
+	}
+}
+
 
 vector<Vec3b> MappingProjector::getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask) {
 	vector<Vec3b> outputPixels;

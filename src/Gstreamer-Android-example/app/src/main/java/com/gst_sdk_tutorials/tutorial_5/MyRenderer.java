@@ -86,12 +86,10 @@ public class MyRenderer extends RajawaliCardboardRenderer {
             } catch (ATexture.TextureException e) {
                 e.printStackTrace();
             }
-            Log.d("MyRenderer", "Add texture for the first time: ");
             mTempBMList.add(bm);
         } else {
             mTempBMList.add(bm);
             mShouldUpdateTexture = true;
-            Log.d("MyRenderer", "Set shouldupdateTexture");
         }
         //mSphereTexture.setBitmap(bm);
         //mTextureManager.replaceTexture(mSphereTexture);

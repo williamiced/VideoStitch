@@ -81,10 +81,10 @@ RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP
     mApp->timer = g_timer_new();
 #ifdef USING_UDP
     mApp->pipeline = gst_parse_launch(
-        stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc pass=qual quantizer=20 tune=zerolatency ! rtph264pay ! udpsink host=%s port=5000 ", clientIP.c_str()).c_str(), NULL);
+        stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc tune=zerolatency sliced-threads=true ! rtph264pay ! udpsink host=%s port=5000 ", clientIP.c_str()).c_str(), NULL);
 #else
     mApp->pipeline = gst_parse_launch(
-        stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc pass=qual quantizer=20 tune=zerolatency ! tcpserversink host=0.0.0.0 port=5000").c_str(), NULL);
+        stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc tune=zerolatency ! tcpserversink host=0.0.0.0 port=5000").c_str(), NULL);
 #endif
     g_assert (mApp->pipeline);
 

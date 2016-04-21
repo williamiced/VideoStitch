@@ -27,6 +27,7 @@ typedef struct _CustomData {
     GMainContext *context; /* GLib context used to run the main loop */
     GMainLoop *main_loop;  /* GLib main loop */
     gboolean initialized;  /* To avoid informing the UI multiple times about the initialization */
+    gboolean isTCP;
 } CustomData;
 
 /* These global variables cache values which are not changing during execution */
@@ -159,8 +160,6 @@ static gboolean DisplayFrame(GstAppSink *fks, CustomData* data) {
         gst_structure_get_int(pStructure, "bpp", &bpp);
         format = gst_structure_get_string(pStructure, "format");
 
-        GST_DEBUG("Format: %s", format);
-
         if ( !gst_buffer_map(buf, &info, GST_MAP_READ) )
             GST_DEBUG ("Buffer is unreadable");
         size = info.size;
@@ -201,11 +200,14 @@ static void *app_function (void *userdata) {
     // RTSP Ver.
     //data->pipeline = gst_parse_launch("rtspsrc location=rtsp://140.112.29.188:8554/test latency=2000 ! decodebin ! videoconvert ! appsink name=mysink", &error);
 
-    // UDP Ver.
-    //data->pipeline = gst_parse_launch("udp://0.0.0.0:5000 ! application/x-rtp ! rtph264depay ! h264parse ! decodebin ! videoconvert ! appsink name=mysink", &error);
+    if (data->isTCP)
+        // TCP Ver.
+        data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! appsink name=mysink", &error);
+    else
+        // UDP Ver.
+        data->pipeline = gst_parse_launch("udp://0.0.0.0:5000 ! application/x-rtp ! rtph264depay ! decodebin ! videoconvert ! appsink name=mysink", &error);
 
-    // TCP Ver.
-    data->pipeline = gst_parse_launch("tcpclientsrc host=140.112.29.188 port=5000 ! h264parse ! decodebin ! videoconvert ! appsink name=mysink", &error);
+
     if (error) {
         gchar *message = g_strdup_printf("Unable to build pipeline: %s", error->message);
         g_clear_error (&error);
@@ -258,7 +260,7 @@ static void *app_function (void *userdata) {
  */
 
 /* Instruct the native code to create its internal data structure, pipeline and thread */
-static void gst_native_init (JNIEnv* env, jobject thiz) {
+static void gst_native_init (JNIEnv* env, jobject thiz, jboolean isTCP) {
     CustomData *data = g_new0 (CustomData, 1);
     SET_CUSTOM_DATA (env, thiz, custom_data_field_id, data);
     GST_DEBUG_CATEGORY_INIT (debug_category, "tutorial-2", 0, "Android tutorial 2");
@@ -266,6 +268,7 @@ static void gst_native_init (JNIEnv* env, jobject thiz) {
     GST_DEBUG ("Created CustomData at %p", data);
     data->app = (*env)->NewGlobalRef (env, thiz);
     GST_DEBUG ("Created GlobalRef for app object at %p", data->app);
+    data->isTCP = isTCP;
     pthread_create (&gst_app_thread, NULL, &app_function, data);
 }
 
@@ -320,7 +323,7 @@ static jboolean gst_native_class_init (JNIEnv* env, jclass klass) {
 
 /* List of implemented native methods */
 static JNINativeMethod native_methods[] = {
-        { "nativeInit", "()V", (void *) gst_native_init},
+        { "nativeInit", "(Z)V", (void *) gst_native_init},
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
         { "nativePlay", "()V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
