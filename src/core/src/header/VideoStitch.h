@@ -12,6 +12,7 @@
 #include <header/MappingProjector.h>
 #include <header/RealtimeStreamMaker.h>
 #include <header/SensorServer.h>
+#include <header/SaliencyMapHandler.h>
 #include <header/Usage.h>
 
 #include "opencv2/core/cuda.hpp"
@@ -28,6 +29,7 @@ class VideoStitcher {
 		shared_ptr<MappingProjector> mMP;
 		shared_ptr<RealtimeStreamMaker> mRSM;
 		shared_ptr<SensorServer> mVSS;
+		shared_ptr<SaliencyMapHandler> mSMH;
 
 		Size mOutputVideoSize;
 

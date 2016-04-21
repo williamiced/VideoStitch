@@ -33,7 +33,7 @@ enum angle{ YAW = 0 , ROLL = 1 , PITCH = 2 };
 enum direction{ X = 0 , Y = 1 , Z = 2 };
 
 enum returnValEnum {
-	N_NORMAL, E_BAD_ARGUMENTS, E_FILE_NOT_EXISTS, E_TOO_FEW_VIDEOS
+	N_NORMAL, E_BAD_ARGUMENTS, E_FILE_NOT_EXISTS, E_TOO_FEW_VIDEOS, E_RUNTIME_ERROR
 };
 
 enum logTypeEnum {
@@ -58,7 +58,8 @@ const boost::unordered_map<returnValEnum, const char*> returnValToString = map_l
     (N_NORMAL, "Successfully executes.")
     (E_BAD_ARGUMENTS, "Bad arguments. Please check the usage.")
     (E_FILE_NOT_EXISTS, "Files or directories cannot be found.")
-    (E_TOO_FEW_VIDEOS, "Loaded videos are too few to stitch.");
+    (E_TOO_FEW_VIDEOS, "Loaded videos are too few to stitch.")
+    (E_RUNTIME_ERROR, "Run time error");
     
 char* getCmdOption(char** begin, char** end, const std::string & option);
 bool cmdOptionExists(char** begin, char** end, const std::string& option);

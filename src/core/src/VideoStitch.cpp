@@ -24,6 +24,12 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
 	logMsg(LOG_INFO, "=== Data loaded complete ===");
 
+#ifdef USE_SALIENCY_MAP_HANDLER
+	logMsg(LOG_INFO, "=== Initialize saliency map handler ===");
+	mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler( getCmdOption(argv, argv + argc, "--saliency"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
+	logMsg(LOG_INFO, "=== Data loaded complete ===");
+#endif
+
 	logMsg(LOG_INFO, "=== Initialize Sensor Server ===");
 	mVSS = shared_ptr<SensorServer>( new SensorServer() );
 	logMsg(LOG_INFO, "=== Sensor Server is constructed ===");
@@ -89,7 +95,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 
 //#ifndef REAL_TIME_STREAMING
-	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
+	//VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
+	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), mVL->getVideoType(), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
 //#endif
 
 	int seqCount = mVL->getVideoCount();
@@ -126,17 +133,29 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			mVSS->getRenderArea(renderArea, renderMask);
 		}
 
+#ifndef USE_SALIENCY_MAP_HANDLER
 		mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask );
+#else
 		mMP->renderSmallSizePano(smallCanvas, frames);
-		imwrite("tmp.png", smallCanvas);
+		cv::resize(smallCanvas, targetCanvas, Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT));
+		//targetCanvas = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+
+		Mat saliencyFrame;
+		if ( !mSMH->getSaliencyFrame(saliencyFrame) ) 
+			exitWithMsg(E_RUNTIME_ERROR, "Error when get saliency frame");
+		mMP->renderSaliencyArea(targetCanvas, frames, saliencyFrame);
+		//imwrite(stringFormat("tmp2/pano_%d.png", f), targetCanvas);	
+#endif
+		//imwrite("tmp.png", smallCanvas);
 		//mVS->stablize(targetCanvas);
 		
 #ifdef REAL_TIME_STREAMING
 		mRSM->streamOutFrame(targetCanvas);
-		//(*outputVideo) << targetCanvas;
+		(*outputVideo) << targetCanvas;
 #else
 		(*outputVideo) << targetCanvas;
 #endif
+		mMP->increaseFrame();
 	}
 	mMP->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");

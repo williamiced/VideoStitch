@@ -50,6 +50,8 @@ void logMsg(logTypeEnum type, string msg, int threadIdx) {
         head = "\033[1;32m";
     else if (threadIdx == 3)
         head = "\033[1;35m";
+    else if (threadIdx == 4)
+        head = "\033[1;36m";
     if (type == LOG_WARNING)
         head = "\033[1;33m";
     else if (type == LOG_ERROR)

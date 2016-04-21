@@ -160,6 +160,31 @@ void MappingProjector::interpolateUVcheckupTable() {
 			}
 		}
 	}
+
+	for (int y=OUTPUT_PANO_HEIGHT-1; y>=0; y--) {
+		for (int x=OUTPUT_PANO_WIDTH-1; x>=0; x--) {
+			bool hasPixel = false;
+			for (int v=0; v<mViewCount; v++) {
+				if (mProjMasks[v].at<uchar>(y, x) != 0)
+					hasPixel = true;
+			}
+			if (!hasPixel) {
+				for (int v=0; v<mViewCount; v++) {
+					if (mProjMasks[v].at<uchar>(y, x) != 0)
+						continue;
+					if (x < OUTPUT_PANO_WIDTH-1 && mProjMasks[v].at<uchar>(y, x+1) != 0) {
+						mProjMapX[v].at<int>(y, x) = mProjMapX[v].at<int>(y, x+1);
+						mProjMapY[v].at<int>(y, x) = mProjMapY[v].at<int>(y, x+1);
+						mProjMasks[v].at<uchar>(y, x) = 255;
+					} else if (y < OUTPUT_PANO_HEIGHT-1 && mProjMasks[v].at<uchar>(y+1, x) != 0) {
+						mProjMapX[v].at<int>(y, x) = mProjMapX[v].at<int>(y+1, x);
+						mProjMapY[v].at<int>(y, x) = mProjMapY[v].at<int>(y+1, x);
+						mProjMasks[v].at<uchar>(y, x) = 255;
+					}
+				} 
+			}
+		}
+	}
 }
 
 void MappingProjector::refineCheckupTableByFeaturesMatching() {
@@ -285,11 +310,15 @@ Size MappingProjector::getOutputVideoSize() {
 	return Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT);
 }
 
+void MappingProjector::increaseFrame() {
+	mFrameProcessed++;
+}
+
 void MappingProjector::checkFPS() {
 	double total = 0.f;
 	for (unsigned int i=0; i<mExecTimes.size(); i++) 
 		total += mExecTimes[i];
-	logMsg(LOG_INFO, stringFormat( "=== Average FPS is %lf === ", mExecTimes.size() / total ) );
+	logMsg(LOG_INFO, stringFormat( "=== Average FPS is %lf === ", mFrameProcessed / total ) );
 }
 
 MappingProjector::MappingProjector(int viewCount, Size viewSize) : 
@@ -297,6 +326,31 @@ MappingProjector::MappingProjector(int viewCount, Size viewSize) :
 	mViewCount(viewCount),
 	mViewSize(viewSize) {
 		initialData();
+}
+
+void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
+	for (int v=0; v<mViewCount; v++)
+		mWarpedImgs[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+
+	#pragma omp parallel for collapse(2)
+	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
+		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
+			for (int v=0; v<mViewCount; v++) {
+				if (mProjMasks[v].at<uchar>(y, x) != 0) {
+					int px = mProjMapX[v].at<int>(y, x);
+					int py = mProjMapY[v].at<int>(y, x);
+					if (py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height)
+						mWarpedImgs[v].at<Vec3b>(y, x) = Vec3b(0, 0, 0);	
+					else
+						mWarpedImgs[v].at<Vec3b>(y, x) = frames[v].at<Vec3b>(py, px);
+				}
+			}
+		}
+	}
+	
+	mEP->feedExposures(mWarpedImgs, mProjMasks);
+	mBP->genFinalMap(mEP->gains());
+	mBP->getFinalMap(mFinalBlendingMap);
 }
 
 void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask) {
@@ -308,41 +362,18 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 	int x1 = renderArea.tl().x;
 	int x2 = renderArea.tl().x + renderArea.size().width;
 
-	for (int v=0; v<mViewCount; v++)
-		mWarpedImgs[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+	if ( mEP->needFeed() ) 
+		genExpoBlendingMap(frames);
 
-	if ( mEP->needFeed() ) {
-		#pragma omp parallel for collapse(2)
-		for (int y=y1; y<y2; y++) {
-			for (int x=x1; x<x2; x++) {
-				for (int v=0; v<mViewCount; v++) {
-					if (mProjMasks[v].at<uchar>(y, x) != 0) {
-						int px = mProjMapX[v].at<int>(y, x);
-						int py = mProjMapY[v].at<int>(y, x);
-						if (py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height)
-							mWarpedImgs[v].at<Vec3b>(y, x) = Vec3b(0, 0, 0);	
-						else
-							mWarpedImgs[v].at<Vec3b>(y, x) = frames[v].at<Vec3b>(py, px);
-					}
-				}
-			}
-		}
-		
-		mEP->feedExposures(mWarpedImgs, mProjMasks);
-		mBP->genFinalMap(mEP->gains());
-		mBP->getFinalMap(mFinalBlendingMap);
-		outImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
-	} else {
-		#pragma omp parallel for collapse(2) 
-		for (int y=y1; y<y2; y++) {
-			for (int x=x1; x<x2; x++) {
-				for (int v=0; v<mViewCount; v++) {
-					if (mProjMasks[v].at<uchar>(y, x) != 0) {
-						int px = mProjMapX[v].at<int>(y, x);
-						int py = mProjMapY[v].at<int>(y, x);
-						if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
-							outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y, x);
-					}
+	#pragma omp parallel for collapse(2) 
+	for (int y=y1; y<y2; y++) {
+		for (int x=x1; x<x2; x++) {
+			for (int v=0; v<mViewCount; v++) {
+				if (mProjMasks[v].at<uchar>(y, x) != 0) {
+					int px = mProjMapX[v].at<int>(y, x);
+					int py = mProjMapY[v].at<int>(y, x);
+					if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
+						outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y, x);
 				}
 			}
 		}
@@ -350,26 +381,67 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 
 	boostTimer.stop();
 	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
-    mFrameProcessed++;	
+}
+
+void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyInfo) {
+	boost::timer::cpu_timer boostTimer;
+
+	if ( mEP->needFeed() )
+		genExpoBlendingMap(frames);
+
+	int h = saliencyInfo.rows;
+	int w = saliencyInfo.cols;
+
+	#pragma omp parallel for collapse(2) 
+	for (int y=0 ;y<h; y++) {
+		for (int x=0; x<w; x++) {
+			if (saliencyInfo.at<uchar>(y, x) == 0) 
+				continue;
+			for (int y0 = y*OUTPUT_PANO_HEIGHT/h, counterY=0; counterY <= OUTPUT_PANO_HEIGHT/h; y0++, counterY++) {
+				for (int x0 = x*OUTPUT_PANO_WIDTH/w, counterX=0; counterX <= OUTPUT_PANO_WIDTH/w; x0++, counterX++) {
+					outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
+					for (int v=0; v<mViewCount; v++) {
+						if (mProjMasks[v].at<uchar>(y0, x0) != 0) {
+							int px = mProjMapX[v].at<int>(y0, x0);
+							int py = mProjMapY[v].at<int>(y0, x0);
+							if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
+								outImg.at<Vec3b>(y0, x0) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y0, x0);
+						}
+					}			
+				}
+			}
+		}
+	}
+	boostTimer.stop();
+	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
 }
 
 void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
+	boost::timer::cpu_timer boostTimer;
+
 	outImg = Mat::zeros(DOWN_SAMPLE_MAP_HEIGHT, DOWN_SAMPLE_MAP_WIDTH, CV_8UC3);
 	float ratioX = (float) OUTPUT_PANO_WIDTH / DOWN_SAMPLE_MAP_WIDTH;
 	float ratioY = (float) OUTPUT_PANO_HEIGHT / DOWN_SAMPLE_MAP_HEIGHT;
+
+	if ( mEP->needFeed() )
+		genExpoBlendingMap(frames);
 
 	#pragma omp parallel for collapse(2) 
 	for (int y=0; y<DOWN_SAMPLE_MAP_HEIGHT; y++) {
 		for (int x=0; x<DOWN_SAMPLE_MAP_WIDTH; x++) {
 			int oriY = (int) (y * ratioY);
 			int oriX = (int) (x * ratioX);
+
 			for (int v=0; v<mViewCount; v++) {
 				if (mProjMasks[v].at<uchar>(oriY, oriX) != 0) {
 					int px = mProjMapX[v].at<int>(oriY, oriX);
 					int py = mProjMapY[v].at<int>(oriY, oriX);
-					if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
+
+					if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) ) {
 						outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(oriY, oriX);
+					}
 				}
+				
 			}
 		}
 	}

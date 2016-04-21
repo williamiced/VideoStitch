@@ -70,7 +70,10 @@ class MappingProjector {
 
 	public:
 		MappingProjector(int viewCount, Size viewSize);
+		void increaseFrame();
+		void genExpoBlendingMap(vector<Mat> frames);
 		void renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask);
+		void renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyFrame);
 		void renderSmallSizePano(Mat& outImg, vector<Mat> frames);
 		void calcProjectionMatrix();
 		Size getOutputVideoSize();

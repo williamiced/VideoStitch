@@ -17,6 +17,7 @@ void VideoLoader::loadVideos(char* fileName) {
 	int w = (int) mVideoList[0]->get(CV_CAP_PROP_FRAME_WIDTH);
 	int h = (int) mVideoList[0]->get(CV_CAP_PROP_FRAME_HEIGHT);
 	mVideoSize = Size(w, h);
+	mVideoType = (int) mVideoList[0]->get(CV_CAP_PROP_FORMAT);
 
 	mFrameBuffers.resize(mVideoList.size());
 	mBufferProducerThread = thread(&VideoLoader::preloadVideo, this);
@@ -51,6 +52,10 @@ void VideoLoader::preloadVideo() {
 			mIsFinish = true;
 	}
 	mIsProducerRun = false;
+}
+
+int VideoLoader::getVideoType() {
+	return mVideoType;
 }
 
 double VideoLoader::getVideoFPS() {

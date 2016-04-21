@@ -37,6 +37,7 @@ class VideoLoader {
 		int mCurrentFirstFrame;
 		int mDuration;
 		mutex mBufLock;
+		int mVideoType;
 
 		// For thread control
 		thread mBufferProducerThread;
@@ -48,6 +49,7 @@ class VideoLoader {
 		void calcFocalLengthInPixel(double crop, double hfov);
 		bool wakeLoaderUp();
 	public:
+		int getVideoType();
 		double getFocalLength();
 		int getVideoListSize();
 		VideoCapture* getVideo(int idx);
