@@ -234,6 +234,20 @@ public class MyVRActivity extends CardboardActivity implements SensorEventListen
         final int oriLen = data.length;
         final int[] rgbArr = convertYUV444toRGB8888(data, width, height);
         final int len = rgbArr.length;
+        /*
+        final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        bitmap.setPixels(rgbArr, 0, width, 0, 0, width, height);
+        mRenderer.changeTextureByBitmap(bitmap);
+        */
+    }
+
+    private void passDataSmall(final int width, final int height, final byte[] data) {
+        final int oriLen = data.length;
+        final int[] rgbArr = convertYUV444toRGB8888(data, width, height);
+        final int len = rgbArr.length;
+
+        //Log.d("MyVRActivity", "Get small!!!");
+
         final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         bitmap.setPixels(rgbArr, 0, width, 0, 0, width, height);
         mRenderer.changeTextureByBitmap(bitmap);

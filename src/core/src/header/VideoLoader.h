@@ -48,6 +48,7 @@ class VideoLoader {
 		void loadVideos(char* flieName);
 		void calcFocalLengthInPixel(double crop, double hfov);
 		bool wakeLoaderUp();
+		
 	public:
 		int getVideoType();
 		double getFocalLength();

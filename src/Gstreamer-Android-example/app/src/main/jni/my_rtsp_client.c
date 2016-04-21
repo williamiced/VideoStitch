@@ -37,6 +37,7 @@ static JavaVM *java_vm;
 static jfieldID custom_data_field_id;
 static jmethodID set_message_method_id;
 static jmethodID pass_data_method_id;
+static jmethodID pass_data_small_method_id;
 static jmethodID on_gstreamer_initialized_method_id;
 
 /*
@@ -182,6 +183,53 @@ static gboolean DisplayFrame(GstAppSink *fks, CustomData* data) {
     return GST_FLOW_OK;
 }
 
+static gboolean DisplayFrameSmall(GstAppSink *fks, CustomData* data) {
+    GstBuffer* buf;
+    GstMapInfo info;
+    GstCaps* caps;
+    GstStructure* pStructure;
+    int width;
+    int height;
+    int bpp;
+    gchar* format;
+
+    int size;
+
+    GstSample* sample;
+    g_signal_emit_by_name (fks, "pull-sample", &sample);
+
+    if (sample) {
+        caps = gst_sample_get_caps (sample);
+        pStructure = gst_caps_get_structure(caps, 0);
+        buf = gst_sample_get_buffer(sample);
+
+        gst_structure_get_int(pStructure, "width", &width);
+        gst_structure_get_int(pStructure, "height", &height);
+        gst_structure_get_int(pStructure, "bpp", &bpp);
+        format = gst_structure_get_string(pStructure, "format");
+
+        if ( !gst_buffer_map(buf, &info, GST_MAP_READ) )
+            GST_DEBUG ("Buffer is unreadable");
+        size = info.size;
+        JNIEnv *env = get_jni_env();
+
+        jbyteArray result = (*env)->NewByteArray(env, size);
+        jbyte *resultPtr = (*env)->GetPrimitiveArrayCritical(env, result, JNI_FALSE);
+        int i=0;
+        for (i=0; i<size; i++)
+            resultPtr[i] = info.data[i];
+
+        gst_buffer_unmap (buf, &info);
+        (*env)->ReleasePrimitiveArrayCritical(env, result, resultPtr, 0);
+
+        (*env)->CallVoidMethod(env, data->app, pass_data_small_method_id, width, height, result);
+
+        gst_sample_unref (sample);
+        (*env)->DeleteLocalRef (env, result);
+    }
+    return GST_FLOW_OK;
+}
+
 /* Main method for the native code. This is executed on its own thread. */
 static void *app_function (void *userdata) {
     JavaVMAttachArgs args;
@@ -202,7 +250,7 @@ static void *app_function (void *userdata) {
 
     if (data->isTCP)
         // TCP Ver.
-        data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! appsink name=mysink", &error);
+        data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! appsink name=mysink tcpclientsrc host=192.168.1.188 port=5001 ! decodebin ! videoconvert ! appsink name=mysink_small", &error);
     else
         // UDP Ver.
         data->pipeline = gst_parse_launch("udp://0.0.0.0:5000 ! application/x-rtp ! rtph264depay ! decodebin ! videoconvert ! appsink name=mysink", &error);
@@ -220,12 +268,17 @@ static void *app_function (void *userdata) {
     gst_app_sink_set_emit_signals((GstAppSink*)myAppSink, TRUE);
     gst_app_sink_set_drop ((GstAppSink*)myAppSink, TRUE);
     gst_app_sink_set_max_buffers ((GstAppSink*)myAppSink, 60);
-    if (myAppSink == NULL)
-        GST_DEBUG ("myAppSink is null");
-    else
-        GST_DEBUG ("myAppSink is good");
 
     g_signal_connect(myAppSink, "new-sample", G_CALLBACK(DisplayFrame), data);
+
+
+    GstElement* myAppSink_small = gst_bin_get_by_name (GST_BIN (data->pipeline), "mysink_small");
+    gst_app_sink_set_emit_signals((GstAppSink*)myAppSink_small, TRUE);
+    gst_app_sink_set_drop ((GstAppSink*)myAppSink_small, TRUE);
+    gst_app_sink_set_max_buffers ((GstAppSink*)myAppSink_small, 60);
+
+    g_signal_connect(myAppSink_small, "new-sample", G_CALLBACK(DisplayFrameSmall), data);
+
 
     /* Instruct the bus to emit signals for each received message, and connect to the interesting signals */
     bus = gst_element_get_bus (data->pipeline);
@@ -309,9 +362,10 @@ static jboolean gst_native_class_init (JNIEnv* env, jclass klass) {
     custom_data_field_id = (*env)->GetFieldID (env, klass, "native_custom_data", "J");
     set_message_method_id = (*env)->GetMethodID (env, klass, "setMessage", "(Ljava/lang/String;)V");
     pass_data_method_id = (*env)->GetMethodID (env, klass, "passData", "(II[B)V");
+    pass_data_small_method_id = (*env)->GetMethodID (env, klass, "passDataSmall", "(II[B)V");
     on_gstreamer_initialized_method_id = (*env)->GetMethodID (env, klass, "onGStreamerInitialized", "()V");
 
-    if (!custom_data_field_id || !set_message_method_id ||  !pass_data_method_id || !on_gstreamer_initialized_method_id) {
+    if (!custom_data_field_id || !set_message_method_id || !pass_data_method_id ||  !pass_data_small_method_id || !on_gstreamer_initialized_method_id) {
         /* We emit this message through the Android log instead of the GStreamer log because the later
          * has not been initialized yet.
          */

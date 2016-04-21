@@ -22,16 +22,22 @@ using namespace cv;
 typedef struct _App {
   GstElement* pipeline;
   GstElement* appsrc;
+  GstElement* appsrc_small;
   GMainLoop* loop;
   guint sourceid;
+  guint sourceid_small;
   GstClockTime timestamp;
+  GstClockTime timestamp_small;
   GTimer* timer;
+  GTimer* timer_small;
 } MyApp;
 
 class RealtimeStreamMaker {
 	private:
 		static queue<Mat> frameQueue;
+		static queue<Mat> frameQueue_small;
 		static Mat latestFrame;
+		static Mat latestFrame_small;
 		static MyApp* mApp;
 		thread* serverThread;
 		
@@ -39,9 +45,13 @@ class RealtimeStreamMaker {
 		static gboolean read_data(MyApp* app);
 		static void start_feed (GstElement* pl, guint size, MyApp* app);
 		static void stop_feed (GstElement* pl, MyApp* app);
+		static gboolean read_data_small(MyApp* app);
+		static void start_feed_small (GstElement* pl, guint size, MyApp* app);
+		static void stop_feed_small (GstElement* pl, MyApp* app);
 		static void runInBackground();
 		void waitForServerFinish();
 		void streamOutFrame(Mat frame);
+		void streamOutFrame_small(Mat frame);
     	RealtimeStreamMaker(int argc, char* argv[], string clientIP);
     	~RealtimeStreamMaker();
 };
