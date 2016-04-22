@@ -28,6 +28,7 @@ class SensorServer {
 		float* mOrientation;
 		bool mIsSensorWorks;
 		thread mServerThread;
+		int mW, mH;
 
 		void makeConnection();
 		void parseSensorInfo(char* buf);

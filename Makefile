@@ -84,7 +84,7 @@ run:
 	@mkdir -p $(TMP)
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
-	$(BIN)/VideoStitch --input $(DATA)/inputVideo-1440.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 1000 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 
+	$(BIN)/VideoStitch --input $(DATA)/inputVideo-1920.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
 
 runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi

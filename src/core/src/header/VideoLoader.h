@@ -43,12 +43,14 @@ class VideoLoader {
 		thread mBufferProducerThread;
 		atomic<bool> mIsProducerRun;
 
+		int mContainerSize;
+
 		bool mIsFinish;
 
 		void loadVideos(char* flieName);
 		void calcFocalLengthInPixel(double crop, double hfov);
 		bool wakeLoaderUp();
-		
+
 	public:
 		int getVideoType();
 		double getFocalLength();

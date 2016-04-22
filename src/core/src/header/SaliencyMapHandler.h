@@ -27,6 +27,9 @@ class SaliencyMapHandler {
 		mutex mBufLock;
 		int mW;
 		int mH;
+		int mGridSize;
+		int mGridThresh;
+		int mContainerSize;
 
 		void analyzeInfo(Mat img, Mat& info);
 		bool isCleanup();

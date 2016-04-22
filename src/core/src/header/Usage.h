@@ -2,8 +2,11 @@
 #define _H_USAGE
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <ctime> 
+#include <map>
 #include <execinfo.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -60,11 +63,17 @@ const boost::unordered_map<returnValEnum, const char*> returnValToString = map_l
     (E_FILE_NOT_EXISTS, "Files or directories cannot be found.")
     (E_TOO_FEW_VIDEOS, "Loaded videos are too few to stitch.")
     (E_RUNTIME_ERROR, "Run time error");
-    
+
+extern map<string, string> CONFIG;
+
 char* getCmdOption(char** begin, char** end, const std::string & option);
 bool cmdOptionExists(char** begin, char** end, const std::string& option);
 bool checkArguments(int argc, char** argv);
 
+int getIntConfig(string name);
+string getStringConfig(string name);
+
+void loadConfig(char* filename);
 void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);
 void logMsg(logTypeEnum type, string msg, int threadIdx);

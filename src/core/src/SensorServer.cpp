@@ -1,6 +1,6 @@
 #include <header/SensorServer.h>
 
-SensorServer::SensorServer() : mOrientation(new float[3]), mIsSensorWorks(false) {
+SensorServer::SensorServer() : mOrientation(new float[3]), mIsSensorWorks(false), mW(getIntConfig("OUTPUT_PANO_WIDTH")), mH(getIntConfig("OUTPUT_PANO_HEIGHT")) {
     mServerThread = thread(&SensorServer::makeConnection, this);
 }
 
@@ -89,14 +89,11 @@ void SensorServer::getRenderArea(Rect& area, Mat& mask) {
     }
     
     // debug
-    /*
     u0 = 0.f;
     u1 = 1.f;
     v0 = 0.f;
     v1 = 1.f;
-    */
 
-
-    area = Rect(u0 * OUTPUT_PANO_WIDTH, v0 * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, (v1-v0) * OUTPUT_PANO_HEIGHT);
-    mask = Mat((v1-v0) * OUTPUT_PANO_HEIGHT, (u1-u0) * OUTPUT_PANO_WIDTH, CV_8UC1, 1);
+    area = Rect(u0 * mW, v0 * mH, (u1-u0) * mW, (v1-v0) * mH);
+    mask = Mat((v1-v0) * mH, (u1-u0) * mW, CV_8UC1, 1);
 }

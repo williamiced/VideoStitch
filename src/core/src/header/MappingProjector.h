@@ -33,10 +33,13 @@ using namespace cv::cuda;
 class MappingProjector {
 	private:
 		vector<double> mExecTimes;
-		unsigned int mFrameProcessed;
 
 		shared_ptr<ExposureProcessor> mEP;
 		shared_ptr<BlendingProcessor> mBP;
+
+		int mDW, mDH;
+		int mOW, mOH;
+		unsigned int mFrameProcessed;
 		int mViewCount;
 		Size mViewSize;
 		Size mOutputWindowSize;

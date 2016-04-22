@@ -10,10 +10,13 @@ VideoStitcher::~VideoStitcher() {
 }
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]) {
-
 	srand(time(NULL));
 	if ( !checkArguments(argc, argv) )
 		exitWithMsg(E_BAD_ARGUMENTS);
+
+	loadConfig( getCmdOption(argv, argv + argc, "--config") );
+	mOH = getIntConfig("OUTPUT_PANO_HEIGHT");
+	mOW = getIntConfig("OUTPUT_PANO_WIDTH");
 	/** 
 		[Do preprocess]
 			1. Load videos
@@ -67,17 +70,18 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 
 	#ifdef REAL_TIME_STREAMING
 		logMsg(LOG_INFO, "=== Wait for user to connet ===");
-#ifdef USING_UDP
-		while ( !mVSS->isSensorWorks() );
+		if (getStringConfig("USING_PROTOCAL").compare("UDP") == 0) {
+			while ( !mVSS->isSensorWorks() );
 
-		logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
-		mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
-#else // When using TCP, server should be set up before the client connection
-		logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
-		mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
+			logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
+			mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
+		}
+		else { // When using TCP, server should be set up before the client connection
+			logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
+			mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
 
-		while ( !mVSS->isSensorWorks() );
-#endif
+			while ( !mVSS->isSensorWorks() );
+		}
 	#endif
 }
 
@@ -102,8 +106,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
 	
-	Rect renderArea = Rect(0, 0, OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT);
-	Mat  renderMask = Mat(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC1, 1);
+	Rect renderArea = Rect(0, 0, mOW, mOH);
+	Mat  renderMask = Mat(mOH, mOW, CV_8UC1, 1);
 
 	for (int f=0; f<duration; f++) {
 		if (mVL->isCleanup())
@@ -137,8 +141,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask);
 #else
 		mMP->renderSmallSizePano(smallCanvas, frames);
-		cv::resize(smallCanvas, targetCanvas, Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT));
-		//targetCanvas = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+		cv::resize(smallCanvas, targetCanvas, Size(mOW, mOH));
+		//targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
 
 		Mat saliencyFrame;
 		if ( !mSMH->getSaliencyFrame(saliencyFrame) ) 
@@ -153,11 +157,11 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		mRSM->streamOutFrame(targetCanvas);
 #ifdef USE_SALIENCY_MAP_HANDLER		
 		mRSM->streamOutFrame_small(smallCanvas);
-		//(*outputVideo) << targetCanvas;
-#endif
+#endif // USE_SALIENCY_MAP_HANDLER
+		(*outputVideo) << targetCanvas;
 #else
 		(*outputVideo) << targetCanvas;
-#endif
+#endif // REAL_TIME_STREAMING
 		mMP->increaseFrame();
 	}
 	mMP->checkFPS();

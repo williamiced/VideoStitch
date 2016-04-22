@@ -9,16 +9,16 @@ void SaliencyMapHandler::loadSaliencyVideo(char* saliencyFileName) {
 }
 
 void SaliencyMapHandler::analyzeInfo(Mat img, Mat& info) {
-	int h = mH / SALIENCY_GRID_SIZE;
-	int w = mW / SALIENCY_GRID_SIZE;
+	int h = mH / mGridSize;
+	int w = mW / mGridSize;
 	info = Mat::zeros(h, w, CV_8UC1);
 	
 	for (int y=0; y<h; y++) {
 		for (int x=0; x<w; x++) {
 			int total = 0;
-			for (int y0=y*SALIENCY_GRID_SIZE; y0<(y+1)*SALIENCY_GRID_SIZE; y0++) {
-				for (int x0=x*SALIENCY_GRID_SIZE; x0<(x+1)*SALIENCY_GRID_SIZE; x0++) {
-					if (img.at<Vec3b>(y0, x0)[0] > SALIENCY_THRESH)
+			for (int y0=y*mGridSize; y0<(y+1)*mGridSize; y0++) {
+				for (int x0=x*mGridSize; x0<(x+1)*mGridSize; x0++) {
+					if (img.at<Vec3b>(y0, x0)[0] > mGridThresh)
 						total++;
 					else
 						total--;
@@ -35,7 +35,7 @@ void SaliencyMapHandler::analyzeInfo(Mat img, Mat& info) {
 void SaliencyMapHandler::preloadSaliencyVideo() {
 	mIsProducerRun = true;
 
-	while (mSaliencyBuffer.size() < VIDEO_CONTAINER_SIZE && !mIsFinish) {
+	while ( (int) mSaliencyBuffer.size() < mContainerSize && !mIsFinish) {
 		Mat frame;
 		
 		if ( !mSaliencyVideo->read(frame) ) {
@@ -90,7 +90,15 @@ bool SaliencyMapHandler::isCleanup() {
 	return mIsFinish && (mSaliencyBuffer.size() == 0);
 }
 
-SaliencyMapHandler::SaliencyMapHandler(char* saliencyFileName, int duration) : mCurrentFirstFrame(0), mIsProducerRun(false), mIsFinish(false), mDuration(duration) {
+SaliencyMapHandler::SaliencyMapHandler(char* saliencyFileName, int duration) : 
+	mCurrentFirstFrame(0), 
+	mIsProducerRun(false), 
+	mIsFinish(false), 
+	mDuration(duration),
+ 	mGridSize(getIntConfig("SALIENCY_GRID_SIZE")),
+ 	mGridThresh(getIntConfig("SALIENCY_THRESH")),
+ 	mContainerSize(getIntConfig("VIDEO_CONTAINER_SIZE")) {
+
 	loadSaliencyVideo(saliencyFileName);
 }
 

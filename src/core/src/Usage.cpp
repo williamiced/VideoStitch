@@ -1,5 +1,15 @@
 #include <header/Usage.h>
 
+map<string, string> CONFIG;
+
+int getIntConfig(string name) {
+    return stoi(CONFIG[name]);
+}
+
+string getStringConfig(string name) {
+    return CONFIG[name];
+}
+
 char* getCmdOption(char** begin, char** end, const std::string & option) {
     char ** itr = std::find(begin, end, option);
     if (itr != end && ++itr != end) 
@@ -13,6 +23,8 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 
 bool checkArguments(int argc, char** argv) {
     if ( !cmdOptionExists(argv, argv + argc, "--input") )
+        return false;
+    if ( !cmdOptionExists(argv, argv + argc, "--config") )
         return false;
     return true;
 }
@@ -34,6 +46,22 @@ string stringFormat(const string fmt_str, ...) {
             break;
     }
     return string(formatted.get());
+}
+
+void loadConfig(char* filename) {
+    ifstream inputFile(filename);
+
+    string config;
+    while (getline(inputFile, config)) {
+        // Parse
+        int sep = config.find(":=");
+        string key = config.substr(0, sep);
+        string val = config.substr(sep+2);
+
+        CONFIG[key] = val;
+        printf("key: %s, val: %s\n", key.c_str(), val.c_str());
+    }
+    logMsg(LOG_INFO, stringFormat("=== Load %d configs ===", CONFIG.size()));
 }
 
 void exitWithMsg(returnValEnum errVal, string msg) {

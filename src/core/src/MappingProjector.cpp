@@ -108,9 +108,9 @@ void MappingProjector::constructUVcheckupTable() {
 	mProjMapX.resize(mViewCount);
 	mProjMapY.resize(mViewCount);
 	for (int v=0; v<mViewCount; v++) {
-		mProjMasks[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC1);
-		mProjMapX[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_32SC1);
-		mProjMapY[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_32SC1);
+		mProjMasks[v] = Mat::zeros(mOH, mOW, CV_8UC1);
+		mProjMapX[v] = Mat::zeros(mOH, mOW, CV_32SC1);
+		mProjMapY[v] = Mat::zeros(mOH, mOW, CV_32SC1);
 	}
 
 	omp_lock_t writelock;
@@ -122,8 +122,8 @@ void MappingProjector::constructUVcheckupTable() {
 			for (int v=0; v<mViewCount; v++) {
 				Point2f mapPnt = mSphericalWarpers[v]->warpPoint( Point2f(x, y), mK[v], mR[v] );
 				// mapPnt: x = (-pi ~ pi), y = (0 ~ pi)
-				int oX = static_cast<int> ( (mapPnt.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
-				int oY = static_cast<int> ( mapPnt.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+				int oX = static_cast<int> ( (mapPnt.x - (-M_PI)) * mOW / (2 * M_PI) ) % mOW;
+				int oY = static_cast<int> ( mapPnt.y * mOH / (M_PI) )  % mOH;
 
 				omp_set_lock(&writelock);
 				mProjMasks[v].at<uchar>(oY, oX) = 255;
@@ -136,8 +136,8 @@ void MappingProjector::constructUVcheckupTable() {
 }
 
 void MappingProjector::interpolateUVcheckupTable() {
-	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
-		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
+	for (int y=0; y<mOH; y++) {
+		for (int x=0; x<mOW; x++) {
 			bool hasPixel = false;
 			for (int v=0; v<mViewCount; v++) {
 				if (mProjMasks[v].at<uchar>(y, x) != 0)
@@ -161,8 +161,8 @@ void MappingProjector::interpolateUVcheckupTable() {
 		}
 	}
 
-	for (int y=OUTPUT_PANO_HEIGHT-1; y>=0; y--) {
-		for (int x=OUTPUT_PANO_WIDTH-1; x>=0; x--) {
+	for (int y=mOH-1; y>=0; y--) {
+		for (int x=mOW-1; x>=0; x--) {
 			bool hasPixel = false;
 			for (int v=0; v<mViewCount; v++) {
 				if (mProjMasks[v].at<uchar>(y, x) != 0)
@@ -172,11 +172,11 @@ void MappingProjector::interpolateUVcheckupTable() {
 				for (int v=0; v<mViewCount; v++) {
 					if (mProjMasks[v].at<uchar>(y, x) != 0)
 						continue;
-					if (x < OUTPUT_PANO_WIDTH-1 && mProjMasks[v].at<uchar>(y, x+1) != 0) {
+					if (x < mOW-1 && mProjMasks[v].at<uchar>(y, x+1) != 0) {
 						mProjMapX[v].at<int>(y, x) = mProjMapX[v].at<int>(y, x+1);
 						mProjMapY[v].at<int>(y, x) = mProjMapY[v].at<int>(y, x+1);
 						mProjMasks[v].at<uchar>(y, x) = 255;
-					} else if (y < OUTPUT_PANO_HEIGHT-1 && mProjMasks[v].at<uchar>(y+1, x) != 0) {
+					} else if (y < mOH-1 && mProjMasks[v].at<uchar>(y+1, x) != 0) {
 						mProjMapX[v].at<int>(y, x) = mProjMapX[v].at<int>(y+1, x);
 						mProjMapY[v].at<int>(y, x) = mProjMapY[v].at<int>(y+1, x);
 						mProjMasks[v].at<uchar>(y, x) = 255;
@@ -211,12 +211,12 @@ void MappingProjector::refineCheckupTableByFeaturesMatching() {
 			Point2f p1 = mSphericalWarpers[idx1]->warpPoint( Point2f(matches[m].p1.x, matches[m].p1.y), mK[idx1], mR[idx1] );
 			Point2f p2 = mSphericalWarpers[idx2]->warpPoint( Point2f(matches[m].p2.x, matches[m].p2.y), mK[idx2], mR[idx2] );
 
-			int oX = static_cast<int> ( (p1.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
-			int oY = static_cast<int> ( p1.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+			int oX = static_cast<int> ( (p1.x - (-M_PI)) * mOW / (2 * M_PI) ) % mOW;
+			int oY = static_cast<int> ( p1.y * mOH / (M_PI) )  % mOH;
 			Point2d p1d = Point2d( (double)oX, (double)oY );
 
-			oX = static_cast<int> ( (p2.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
-			oY = static_cast<int> ( p2.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+			oX = static_cast<int> ( (p2.x - (-M_PI)) * mOW / (2 * M_PI) ) % mOW;
+			oY = static_cast<int> ( p2.y * mOH / (M_PI) )  % mOH;
 			Point2d p2d = Point2d( (double)oX, (double)oY );
 
 			matchesInIdx1.push_back( p1d );
@@ -292,8 +292,8 @@ void MappingProjector::getUVbyAzimuthal(const float xOffset, const float yOffset
 
 void MappingProjector::initialData() {
 	int h, w;
-	w = OUTPUT_PANO_WIDTH;
-	h = OUTPUT_PANO_HEIGHT;
+	w = mOW;
+	h = mOH;
 	mWarpedImgs.resize(mViewCount);
 	for (int v=0; v<mViewCount; v++)
 		mWarpedImgs[v] = Mat::zeros(h, w, CV_8UC3);
@@ -307,7 +307,7 @@ void MappingProjector::initialData() {
 }
 
 Size MappingProjector::getOutputVideoSize() {
-	return Size(OUTPUT_PANO_WIDTH, OUTPUT_PANO_HEIGHT);
+	return Size(mOW, mOH);
 }
 
 void MappingProjector::increaseFrame() {
@@ -322,6 +322,10 @@ void MappingProjector::checkFPS() {
 }
 
 MappingProjector::MappingProjector(int viewCount, Size viewSize) : 
+	mDW(getIntConfig("DOWN_SAMPLE_MAP_WIDTH")),
+	mDH(getIntConfig("DOWN_SAMPLE_MAP_HEIGHT")),
+	mOW(getIntConfig("OUTPUT_PANO_WIDTH")),
+	mOH(getIntConfig("OUTPUT_PANO_HEIGHT")),
 	mFrameProcessed(0),
 	mViewCount(viewCount),
 	mViewSize(viewSize) {
@@ -330,11 +334,11 @@ MappingProjector::MappingProjector(int viewCount, Size viewSize) :
 
 void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
 	for (int v=0; v<mViewCount; v++)
-		mWarpedImgs[v] = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+		mWarpedImgs[v] = Mat::zeros(mOH, mOW, CV_8UC3);
 
 	#pragma omp parallel for collapse(2)
-	for (int y=0; y<OUTPUT_PANO_HEIGHT; y++) {
-		for (int x=0; x<OUTPUT_PANO_WIDTH; x++) {
+	for (int y=0; y<mOH; y++) {
+		for (int x=0; x<mOW; x++) {
 			for (int v=0; v<mViewCount; v++) {
 				if (mProjMasks[v].at<uchar>(y, x) != 0) {
 					int px = mProjMapX[v].at<int>(y, x);
@@ -356,7 +360,7 @@ void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
 void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask) {
 	boost::timer::cpu_timer boostTimer;
 
-	outImg = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);
+	outImg = Mat::zeros(mOH, mOW, CV_8UC3);
 	int y1 = renderArea.tl().y;
 	int y2 = renderArea.tl().y + renderArea.size().height;
 	int x1 = renderArea.tl().x;
@@ -397,8 +401,8 @@ void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat s
 		for (int x=0; x<w; x++) {
 			if (saliencyInfo.at<uchar>(y, x) == 0) 
 				continue;
-			for (int y0 = y*OUTPUT_PANO_HEIGHT/h, counterY=0; counterY <= OUTPUT_PANO_HEIGHT/h; y0++, counterY++) {
-				for (int x0 = x*OUTPUT_PANO_WIDTH/w, counterX=0; counterX <= OUTPUT_PANO_WIDTH/w; x0++, counterX++) {
+			for (int y0 = y*mOH/h, counterY=0; counterY <= mOH/h; y0++, counterY++) {
+				for (int x0 = x*mOW/w, counterX=0; counterX <= mOW/w; x0++, counterX++) {
 					outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
 					for (int v=0; v<mViewCount; v++) {
 						if (mProjMasks[v].at<uchar>(y0, x0) != 0) {
@@ -419,16 +423,16 @@ void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat s
 void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
 	boost::timer::cpu_timer boostTimer;
 
-	outImg = Mat::zeros(DOWN_SAMPLE_MAP_HEIGHT, DOWN_SAMPLE_MAP_WIDTH, CV_8UC3);
-	float ratioX = (float) OUTPUT_PANO_WIDTH / DOWN_SAMPLE_MAP_WIDTH;
-	float ratioY = (float) OUTPUT_PANO_HEIGHT / DOWN_SAMPLE_MAP_HEIGHT;
+	outImg = Mat::zeros(mDH, mDW, CV_8UC3);
+	float ratioX = (float) mOW / mDW;
+	float ratioY = (float) mOH / mDH;
 
 	if ( mEP->needFeed() )
 		genExpoBlendingMap(frames);
 
 	#pragma omp parallel for collapse(2) 
-	for (int y=0; y<DOWN_SAMPLE_MAP_HEIGHT; y++) {
-		for (int x=0; x<DOWN_SAMPLE_MAP_WIDTH; x++) {
+	for (int y=0; y<mDH; y++) {
+		for (int x=0; x<mDW; x++) {
 			int oriY = (int) (y * ratioY);
 			int oriX = (int) (x * ratioX);
 
@@ -445,14 +449,17 @@ void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
 			}
 		}
 	}
+
+	boostTimer.stop();
+	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );	
 }
 
 
 vector<Vec3b> MappingProjector::getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask) {
 	vector<Vec3b> outputPixels;
 
-	int checkupX = static_cast<int>( (u + M_PI) * OUTPUT_PANO_WIDTH / (2*M_PI) );
-	int checkupY = static_cast<int>( v * OUTPUT_PANO_HEIGHT / M_PI );
+	int checkupX = static_cast<int>( (u + M_PI) * mOW / (2*M_PI) );
+	int checkupY = static_cast<int>( v * mOH / M_PI );
 
 	for (int view=0; view<mViewCount; view++) {
 		if ( mProjMasks[v].at<uchar>(checkupY, checkupX) == 0) {
@@ -495,10 +502,10 @@ void MappingProjector::drawMatches(Mat& img) {
 			Point2f p1 = mSphericalWarpers[idx1]->warpPoint( Point2f(matches[m].p1.x, matches[m].p1.y), mK[idx1], mR[idx1] );
 			Point2f p2 = mSphericalWarpers[idx2]->warpPoint( Point2f(matches[m].p2.x, matches[m].p2.y), mK[idx2], mR[idx2] );
 
-			int oX = static_cast<int> ( (p1.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
-			int oY = static_cast<int> ( p1.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
-			int oX2 = static_cast<int> ( (p2.x - (-M_PI)) * OUTPUT_PANO_WIDTH / (2 * M_PI) ) % OUTPUT_PANO_WIDTH;
-			int oY2 = static_cast<int> ( p2.y * OUTPUT_PANO_HEIGHT / (M_PI) )  % OUTPUT_PANO_HEIGHT;
+			int oX = static_cast<int> ( (p1.x - (-M_PI)) * mOW / (2 * M_PI) ) % mOW;
+			int oY = static_cast<int> ( p1.y * mOH / (M_PI) )  % mOH;
+			int oX2 = static_cast<int> ( (p2.x - (-M_PI)) * mOW / (2 * M_PI) ) % mOW;
+			int oY2 = static_cast<int> ( p2.y * mOH / (M_PI) )  % mOH;
 			
 			circle(img, Point(oX, oY), 3, colors[idx1]);
 			circle(img, Point(oX2, oY2), 3, colors[idx2]);

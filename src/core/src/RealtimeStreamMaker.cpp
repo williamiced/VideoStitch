@@ -2,8 +2,8 @@
 
 queue<Mat> RealtimeStreamMaker::frameQueue;
 queue<Mat> RealtimeStreamMaker::frameQueue_small;
-Mat RealtimeStreamMaker::latestFrame = Mat::zeros(OUTPUT_PANO_HEIGHT, OUTPUT_PANO_WIDTH, CV_8UC3);;
-Mat RealtimeStreamMaker::latestFrame_small = Mat::zeros(DOWN_SAMPLE_MAP_HEIGHT, DOWN_SAMPLE_MAP_WIDTH, CV_8UC3);;
+Mat RealtimeStreamMaker::latestFrame;
+Mat RealtimeStreamMaker::latestFrame_small;
 MyApp* RealtimeStreamMaker::mApp;
 
 void RealtimeStreamMaker::streamOutFrame(Mat frame) {
@@ -130,20 +130,25 @@ void RealtimeStreamMaker::waitForServerFinish() {
 RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP) {
 	gst_init(&argc, &argv);
 
+    latestFrame = Mat::zeros(getIntConfig("OUTPUT_PANO_HEIGHT"), getIntConfig("OUTPUT_PANO_WIDTH"), CV_8UC3);
+    latestFrame_small = Mat::zeros(getIntConfig("DOWN_SAMPLE_MAP_HEIGHT"), getIntConfig("DOWN_SAMPLE_MAP_WIDTH"), CV_8UC3);
+
     mApp = g_new0(MyApp, 1);
 	mApp->timestamp = 0;
     mApp->timestamp_small = 0;
     mApp->loop   = g_main_loop_new(NULL, FALSE);
     mApp->timer = g_timer_new();
     mApp->timer_small = g_timer_new();
-#ifdef USING_UDP
-    mApp->pipeline = gst_parse_launch(
-        stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc tune=zerolatency sliced-threads=true ! rtph264pay ! udpsink host=%s port=5000 ", clientIP.c_str()).c_str(), NULL);
-#else
-    mApp->pipeline = gst_parse_launch(
-        stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc tune=zerolatency ! tcpserversink host=0.0.0.0 port=5000 \
-            appsrc name=mysrc_small format=time ! videoconvert ! x264enc tune=zerolatency ! tcpserversink host=0.0.0.0 port=5001").c_str(), NULL);
-#endif
+
+    if (getStringConfig("USING_PROTOCAL").compare("UDP") == 0 ) {
+        mApp->pipeline = gst_parse_launch(
+            stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc tune=zerolatency sliced-threads=true ! rtph264pay ! udpsink host=%s port=5000 ", clientIP.c_str()).c_str(), NULL);
+    }
+    else {
+        mApp->pipeline = gst_parse_launch(
+            stringFormat("appsrc name=mysrc format=time ! videoconvert ! x264enc tune=zerolatency ! tcpserversink host=0.0.0.0 port=5000 \
+                appsrc name=mysrc_small format=time ! videoconvert ! x264enc tune=zerolatency ! tcpserversink host=0.0.0.0 port=5001").c_str(), NULL);
+    }
     g_assert (mApp->pipeline);
 
     mApp->appsrc = gst_bin_get_by_name (GST_BIN(mApp->pipeline), "mysrc");
@@ -155,16 +160,16 @@ RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP
 
     GstCaps* caps = gst_caps_new_simple ("video/x-raw",
                      "format", G_TYPE_STRING, "RGB",
-                     "width", G_TYPE_INT, OUTPUT_PANO_WIDTH,
-                     "height", G_TYPE_INT, OUTPUT_PANO_HEIGHT,
+                     "width", G_TYPE_INT, getIntConfig("OUTPUT_PANO_WIDTH"),
+                     "height", G_TYPE_INT, getIntConfig("OUTPUT_PANO_HEIGHT"),
                      "framerate", GST_TYPE_FRACTION, 30, 1,
                      NULL);
     g_object_set (G_OBJECT (mApp->appsrc), "caps", caps, NULL);
 
     GstCaps* caps_small = gst_caps_new_simple ("video/x-raw",
                      "format", G_TYPE_STRING, "RGB",
-                     "width", G_TYPE_INT, DOWN_SAMPLE_MAP_WIDTH,
-                     "height", G_TYPE_INT, DOWN_SAMPLE_MAP_HEIGHT,
+                     "width", G_TYPE_INT, getIntConfig("DOWN_SAMPLE_MAP_WIDTH"),
+                     "height", G_TYPE_INT, getIntConfig("DOWN_SAMPLE_MAP_HEIGHT"),
                      "framerate", GST_TYPE_FRACTION, 30, 1,
                      NULL);
     g_object_set (G_OBJECT (mApp->appsrc_small), "caps", caps_small, NULL);

@@ -25,7 +25,7 @@ void VideoLoader::loadVideos(char* fileName) {
 
 void VideoLoader::preloadVideo() {
 	mIsProducerRun = true;
-	while (mFrameBuffers[0].size() < VIDEO_CONTAINER_SIZE && !mIsFinish) {
+	while ( (int) mFrameBuffers[0].size() < mContainerSize && !mIsFinish) {
 		vector<Mat> frames;
 		frames.resize(mVideoList.size());
 		bool isFramesHealthy = true;
@@ -262,6 +262,7 @@ VideoLoader::VideoLoader(char* inputFileName, int duration):
 	mCurrentFirstFrame(0),
 	mDuration(duration) ,
 	mIsProducerRun(false),
+	mContainerSize(getIntConfig("VIDEO_CONTAINER_SIZE")),
 	mIsFinish(false) {
 	if (inputFileName == 0)
 		exitWithMsg(E_FILE_NOT_EXISTS);

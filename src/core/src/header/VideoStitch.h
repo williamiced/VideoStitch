@@ -31,6 +31,9 @@ class VideoStitcher {
 		shared_ptr<SensorServer> mVSS;
 		shared_ptr<SaliencyMapHandler> mSMH;
 
+		int mOH;
+		int mOW;
+
 		Size mOutputVideoSize;
 
 	public:
