@@ -26,16 +26,32 @@
         <activity
             android:name="com.lamerman.FileDialog"
             android:label="@string/filechooser_name" />
+        <activity android:name=".VRActivity"
+            android:screenOrientation="landscape">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="com.google.intent.category.CARDBOARD" />
+            </intent-filter>
+
+        </activity>
+        <!---
         <activity android:name=".TestActivity">
         </activity>
         <activity android:name=".MyVRActivity"
             android:screenOrientation="landscape">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="com.google.intent.category.CARDBOARD" />
             </intent-filter>
         </activity>
+        <activity android:name=".MyVRActivity2"
+            android:screenOrientation="landscape">
+        </activity>
+        -->
     </application>
 
 </manifest>

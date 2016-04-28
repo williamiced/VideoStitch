@@ -139,10 +139,11 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 
 #ifndef USE_SALIENCY_MAP_HANDLER
 		mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask);
+		//imwrite(stringFormat("tmp2/pano_%d.png", f), targetCanvas);	
 #else
 		mMP->renderSmallSizePano(smallCanvas, frames);
-		cv::resize(smallCanvas, targetCanvas, Size(mOW, mOH));
-		//targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
+		//cv::resize(smallCanvas, targetCanvas, Size(mOW, mOH));
+		targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
 
 		Mat saliencyFrame;
 		if ( !mSMH->getSaliencyFrame(saliencyFrame) ) 
@@ -158,7 +159,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 #ifdef USE_SALIENCY_MAP_HANDLER		
 		mRSM->streamOutFrame_small(smallCanvas);
 #endif // USE_SALIENCY_MAP_HANDLER
-		(*outputVideo) << targetCanvas;
+		//(*outputVideo) << targetCanvas;
 #else
 		(*outputVideo) << targetCanvas;
 #endif // REAL_TIME_STREAMING

@@ -1,8 +1,12 @@
 #include <string.h>
+#include <stdint.h>
 #include <jni.h>
 #include <android/log.h>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
 #include <gst/gst.h>
-#include <gst/app/gstappsink.h>
+#include <gst/video/video.h>
+#include <gst/video/videooverlay.h>
 #include <pthread.h>
 
 GST_DEBUG_CATEGORY_STATIC (debug_category);
@@ -28,6 +32,8 @@ typedef struct _CustomData {
     GMainLoop *main_loop;  /* GLib main loop */
     gboolean initialized;  /* To avoid informing the UI multiple times about the initialization */
     gboolean isTCP;
+    GstElement* video_sink;
+    ANativeWindow *native_window; /* The Android native window where video will be rendered */
 } CustomData;
 
 /* These global variables cache values which are not changing during execution */
@@ -36,8 +42,6 @@ static pthread_key_t current_jni_env;
 static JavaVM *java_vm;
 static jfieldID custom_data_field_id;
 static jmethodID set_message_method_id;
-static jmethodID pass_data_method_id;
-static jmethodID pass_data_small_method_id;
 static jmethodID on_gstreamer_initialized_method_id;
 
 /*
@@ -124,8 +128,12 @@ static void state_changed_cb (GstBus *bus, GstMessage *msg, CustomData *data) {
  * These conditions will change depending on the application */
 static void check_initialization_complete (CustomData *data) {
     JNIEnv *env = get_jni_env ();
-    if (!data->initialized && data->main_loop) {
-        GST_DEBUG ("Initialization complete, notifying application. main_loop:%p", data->main_loop);
+    if (!data->initialized && data->native_window && data->main_loop) {
+        GST_DEBUG ("Initialization complete, notifying application. native_window:%p main_loop:%p", data->native_window, data->main_loop);
+
+        /* The main loop is running and we received a native window, inform the sink about it */
+        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (data->video_sink), (guintptr)data->native_window);
+
         (*env)->CallVoidMethod (env, data->app, on_gstreamer_initialized_method_id);
         if ((*env)->ExceptionCheck (env)) {
             GST_ERROR ("Failed to call Java method");
@@ -133,101 +141,6 @@ static void check_initialization_complete (CustomData *data) {
         }
         data->initialized = TRUE;
     }
-}
-
-static gboolean DisplayFrame(GstAppSink *fks, CustomData* data) {
-    GstBuffer* buf;
-    GstMapInfo info;
-    GstCaps* caps;
-    GstStructure* pStructure;
-    int width;
-    int height;
-    int bpp;
-    gchar* format;
-
-    int size;
-
-    GstSample* sample;
-    g_signal_emit_by_name (fks, "pull-sample", &sample);
-
-    //GstSample* sample = gst_app_sink_pull_sample(fks);
-    if (sample) {
-        caps = gst_sample_get_caps (sample);
-        pStructure = gst_caps_get_structure(caps, 0);
-        buf = gst_sample_get_buffer(sample);
-
-        gst_structure_get_int(pStructure, "width", &width);
-        gst_structure_get_int(pStructure, "height", &height);
-        gst_structure_get_int(pStructure, "bpp", &bpp);
-        format = gst_structure_get_string(pStructure, "format");
-
-        if ( !gst_buffer_map(buf, &info, GST_MAP_READ) )
-            GST_DEBUG ("Buffer is unreadable");
-        size = info.size;
-        JNIEnv *env = get_jni_env();
-
-        jbyteArray result = (*env)->NewByteArray(env, size);
-        jbyte *resultPtr = (*env)->GetPrimitiveArrayCritical(env, result, JNI_FALSE);
-        int i=0;
-        for (i=0; i<size; i++)
-            resultPtr[i] = info.data[i];
-
-        gst_buffer_unmap (buf, &info);
-        (*env)->ReleasePrimitiveArrayCritical(env, result, resultPtr, 0);
-
-        (*env)->CallVoidMethod(env, data->app, pass_data_method_id, width, height, result);
-
-        gst_sample_unref (sample);
-        (*env)->DeleteLocalRef (env, result);
-    }
-    return GST_FLOW_OK;
-}
-
-static gboolean DisplayFrameSmall(GstAppSink *fks, CustomData* data) {
-    GstBuffer* buf;
-    GstMapInfo info;
-    GstCaps* caps;
-    GstStructure* pStructure;
-    int width;
-    int height;
-    int bpp;
-    gchar* format;
-
-    int size;
-
-    GstSample* sample;
-    g_signal_emit_by_name (fks, "pull-sample", &sample);
-
-    if (sample) {
-        caps = gst_sample_get_caps (sample);
-        pStructure = gst_caps_get_structure(caps, 0);
-        buf = gst_sample_get_buffer(sample);
-
-        gst_structure_get_int(pStructure, "width", &width);
-        gst_structure_get_int(pStructure, "height", &height);
-        gst_structure_get_int(pStructure, "bpp", &bpp);
-        format = gst_structure_get_string(pStructure, "format");
-
-        if ( !gst_buffer_map(buf, &info, GST_MAP_READ) )
-            GST_DEBUG ("Buffer is unreadable");
-        size = info.size;
-        JNIEnv *env = get_jni_env();
-
-        jbyteArray result = (*env)->NewByteArray(env, size);
-        jbyte *resultPtr = (*env)->GetPrimitiveArrayCritical(env, result, JNI_FALSE);
-        int i=0;
-        for (i=0; i<size; i++)
-            resultPtr[i] = info.data[i];
-
-        gst_buffer_unmap (buf, &info);
-        (*env)->ReleasePrimitiveArrayCritical(env, result, resultPtr, 0);
-
-        (*env)->CallVoidMethod(env, data->app, pass_data_small_method_id, width, height, result);
-
-        gst_sample_unref (sample);
-        (*env)->DeleteLocalRef (env, result);
-    }
-    return GST_FLOW_OK;
 }
 
 /* Main method for the native code. This is executed on its own thread. */
@@ -245,16 +158,24 @@ static void *app_function (void *userdata) {
     g_main_context_push_thread_default(data->context);
 
     /* Build pipeline */
-    // RTSP Ver.
-    //data->pipeline = gst_parse_launch("rtspsrc location=rtsp://140.112.29.188:8554/test latency=2000 ! decodebin ! videoconvert ! appsink name=mysink", &error);
+    //data->pipeline = gst_parse_launch("videotestsrc ! videoconvert ! glimagesink", &error);
+    data->pipeline = gst_parse_launch("filesrc location=/sdcard/Download/test.mp4 ! decodebin ! videoconvert ! glimagesink", &error);
+    //data->pipeline = gst_parse_launch("playbin uri=\"http://docs.gstreamer.com/media/sintel_trailer-368p.ogv\"", &error);
+    //data->pipeline = gst_parse_launch("playbin uri=\"http://www.cmlab.csie.ntu.edu.tw/~wlee/test/test.mp4\"", &error);
 
+    data->video_sink = gst_bin_get_by_interface(GST_BIN(data->pipeline), GST_TYPE_VIDEO_OVERLAY);
+    if (!data->video_sink) {
+        GST_ERROR ("Could not retrieve video sink");
+        return NULL;
+    }
+    /*
     if (data->isTCP)
         // TCP Ver.
-        data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! appsink name=mysink tcpclientsrc host=192.168.1.188 port=5001 ! decodebin ! videoconvert ! appsink name=mysink_small", &error);
+        data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! appsink name=mysink tcpclientsrc host=192.168.1.188 port=5001 ! decodebin ! videoconvert  ! appsink name=mysink_small", &error);
     else
         // UDP Ver.
         data->pipeline = gst_parse_launch("udp://0.0.0.0:5000 ! application/x-rtp ! rtph264depay ! decodebin ! videoconvert ! appsink name=mysink", &error);
-
+    */
 
     if (error) {
         gchar *message = g_strdup_printf("Unable to build pipeline: %s", error->message);
@@ -264,21 +185,8 @@ static void *app_function (void *userdata) {
         return NULL;
     }
 
-    GstElement* myAppSink = gst_bin_get_by_name (GST_BIN (data->pipeline), "mysink");
-    gst_app_sink_set_emit_signals((GstAppSink*)myAppSink, TRUE);
-    gst_app_sink_set_drop ((GstAppSink*)myAppSink, TRUE);
-    gst_app_sink_set_max_buffers ((GstAppSink*)myAppSink, 60);
-
-    g_signal_connect(myAppSink, "new-sample", G_CALLBACK(DisplayFrame), data);
-
-
-    GstElement* myAppSink_small = gst_bin_get_by_name (GST_BIN (data->pipeline), "mysink_small");
-    gst_app_sink_set_emit_signals((GstAppSink*)myAppSink_small, TRUE);
-    gst_app_sink_set_drop ((GstAppSink*)myAppSink_small, TRUE);
-    gst_app_sink_set_max_buffers ((GstAppSink*)myAppSink_small, 60);
-
-    g_signal_connect(myAppSink_small, "new-sample", G_CALLBACK(DisplayFrameSmall), data);
-
+    /* Set the pipeline to READY, so it can already accept a window handle, if we have one */
+    gst_element_set_state(data->pipeline, GST_STATE_READY);
 
     /* Instruct the bus to emit signals for each received message, and connect to the interesting signals */
     bus = gst_element_get_bus (data->pipeline);
@@ -302,6 +210,7 @@ static void *app_function (void *userdata) {
     /* Free resources */
     g_main_context_pop_thread_default(data->context);
     g_main_context_unref (data->context);
+    gst_object_unref (data->video_sink);
     gst_element_set_state (data->pipeline, GST_STATE_NULL);
     gst_object_unref (data->pipeline);
 
@@ -361,11 +270,9 @@ static void gst_native_pause (JNIEnv* env, jobject thiz) {
 static jboolean gst_native_class_init (JNIEnv* env, jclass klass) {
     custom_data_field_id = (*env)->GetFieldID (env, klass, "native_custom_data", "J");
     set_message_method_id = (*env)->GetMethodID (env, klass, "setMessage", "(Ljava/lang/String;)V");
-    pass_data_method_id = (*env)->GetMethodID (env, klass, "passData", "(II[B)V");
-    pass_data_small_method_id = (*env)->GetMethodID (env, klass, "passDataSmall", "(II[B)V");
     on_gstreamer_initialized_method_id = (*env)->GetMethodID (env, klass, "onGStreamerInitialized", "()V");
 
-    if (!custom_data_field_id || !set_message_method_id || !pass_data_method_id ||  !pass_data_small_method_id || !on_gstreamer_initialized_method_id) {
+    if (!custom_data_field_id || !set_message_method_id || !on_gstreamer_initialized_method_id) {
         /* We emit this message through the Android log instead of the GStreamer log because the later
          * has not been initialized yet.
          */
@@ -375,12 +282,55 @@ static jboolean gst_native_class_init (JNIEnv* env, jclass klass) {
     return JNI_TRUE;
 }
 
+static void gst_native_surface_init (JNIEnv *env, jobject thiz, jobject surface) {
+    CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
+    if (!data) return;
+    ANativeWindow *new_native_window = ANativeWindow_fromSurface(env, surface);
+    GST_DEBUG ("Received surface %p (native window %p)", surface, new_native_window);
+
+    if (data->native_window) {
+        ANativeWindow_release (data->native_window);
+        if (data->native_window == new_native_window) {
+            GST_DEBUG ("New native window is the same as the previous one %p", data->native_window);
+            if (data->video_sink) {
+                gst_video_overlay_expose(GST_VIDEO_OVERLAY (data->video_sink));
+                gst_video_overlay_expose(GST_VIDEO_OVERLAY (data->video_sink));
+            }
+            return;
+        } else {
+            GST_DEBUG ("Released previous native window %p", data->native_window);
+            data->initialized = FALSE;
+        }
+    }
+    data->native_window = new_native_window;
+
+    check_initialization_complete (data);
+}
+
+static void gst_native_surface_finalize (JNIEnv *env, jobject thiz) {
+    CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
+    if (!data) return;
+    GST_DEBUG ("Releasing Native Window %p", data->native_window);
+
+    if (data->video_sink) {
+        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (data->video_sink), (guintptr)NULL);
+        gst_element_set_state (data->pipeline, GST_STATE_READY);
+    }
+
+    ANativeWindow_release (data->native_window);
+    data->native_window = NULL;
+    data->initialized = FALSE;
+}
+
+
 /* List of implemented native methods */
 static JNINativeMethod native_methods[] = {
         { "nativeInit", "(Z)V", (void *) gst_native_init},
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
         { "nativePlay", "()V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
+        { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
+        { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},
         { "nativeClassInit", "()Z", (void *) gst_native_class_init}
 };
 
@@ -394,7 +344,7 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         __android_log_print (ANDROID_LOG_ERROR, "tutorial-2", "Could not retrieve JNIEnv");
         return 0;
     }
-    jclass klass = (*env)->FindClass (env, "com/gst_sdk_tutorials/tutorial_5/MyVRActivity");
+    jclass klass = (*env)->FindClass (env, "com/gst_sdk_tutorials/tutorial_5/VRActivity");
     (*env)->RegisterNatives (env, klass, native_methods, G_N_ELEMENTS(native_methods));
 
     pthread_key_create (&current_jni_env, detach_current_thread);

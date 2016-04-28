@@ -59,7 +59,6 @@ void loadConfig(char* filename) {
         string val = config.substr(sep+2);
 
         CONFIG[key] = val;
-        printf("key: %s, val: %s\n", key.c_str(), val.c_str());
     }
     logMsg(LOG_INFO, stringFormat("=== Load %d configs ===", CONFIG.size()));
 }

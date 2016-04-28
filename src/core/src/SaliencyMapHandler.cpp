@@ -63,7 +63,11 @@ bool SaliencyMapHandler::getSaliencyFrame(Mat& frame) {
 	while (mSaliencyBuffer.size() == 0)	 {
 		if (!mIsProducerRun)
 			wakeLoaderUp();
+		if (mIsFinish)
+			break;
 	}
+	if (mSaliencyBuffer.size() == 0)
+		return false;
 	
 	mBufLock.lock();
 	frame = mSaliencyBuffer.front();

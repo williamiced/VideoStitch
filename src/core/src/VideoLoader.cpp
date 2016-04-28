@@ -100,7 +100,11 @@ bool VideoLoader::getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame
 	while (mFrameBuffers[vIdx].size() == 0)	 {
 		if (!mIsProducerRun)
 			wakeLoaderUp();
+		if (mIsFinish)
+			break;
 	}
+	if (mFrameBuffers[vIdx].size() == 0)
+		return false;
 	
 	mBufLock.lock();
 	frame = mFrameBuffers[vIdx].front();

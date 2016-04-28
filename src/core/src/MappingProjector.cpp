@@ -38,15 +38,15 @@ void MappingProjector::loadSerialFile() {
 	mProjMapX.resize(mViewCount);
 	mProjMapY.resize(mViewCount);
 	for (int i=0; i<mViewCount; i++) {
-		ifstream ifs(stringFormat("tmp/mask_%d.srl", i));
+		ifstream ifs(stringFormat("tmp/mask_%d_%d_%d.srl", i, mOW, mOH));
         boost::archive::binary_iarchive ia(ifs);
         ia >> mProjMasks[i];
 
-        ifstream ifs2(stringFormat("tmp/projMapX_%d.srl", i));
+        ifstream ifs2(stringFormat("tmp/projMapX_%d_%d_%d.srl", i, mOW, mOH));
         boost::archive::binary_iarchive ia2(ifs2);
         ia2 >> mProjMapX[i];
 
-        ifstream ifs3(stringFormat("tmp/projMapY_%d.srl", i));
+        ifstream ifs3(stringFormat("tmp/projMapY_%d_%d_%d.srl", i, mOW, mOH));
         boost::archive::binary_iarchive ia3(ifs3);
         ia3 >> mProjMapY[i];
 	}
@@ -55,15 +55,15 @@ void MappingProjector::loadSerialFile() {
 
 void MappingProjector::saveSerialFile() {
 	for (int i=0; i<mViewCount; i++) {
-		ofstream ofs(stringFormat("tmp/mask_%d.srl", i));
+		ofstream ofs(stringFormat("tmp/mask_%d_%d_%d.srl", i, mOW, mOH));
         boost::archive::binary_oarchive oa(ofs);
         oa << mProjMasks[i];
 
-		ofstream ofs2(stringFormat("tmp/projMapX_%d.srl", i));
+		ofstream ofs2(stringFormat("tmp/projMapX_%d_%d_%d.srl", i, mOW, mOH));
         boost::archive::binary_oarchive oa2(ofs2);
         oa2 << mProjMapX[i];        
 
-        ofstream ofs3(stringFormat("tmp/projMapY_%d.srl", i));
+        ofstream ofs3(stringFormat("tmp/projMapY_%d_%d_%d.srl", i, mOW, mOH));
         boost::archive::binary_oarchive oa3(ofs3);
         oa3 << mProjMapY[i];        
 	}	
@@ -72,7 +72,7 @@ void MappingProjector::saveSerialFile() {
 
 void MappingProjector::calcProjectionMatrix() {
 #ifdef USING_SERIALIZABLE_RESULT
-	if ( checkSeriailFileExist("tmp/mask_0.srl") ) {
+	if ( checkSeriailFileExist(stringFormat("tmp/mask_0_%d_%d.srl", mOW, mOH)) ) {
 		loadSerialFile();
 	} else {
 #endif
