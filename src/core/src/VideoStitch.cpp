@@ -1,12 +1,12 @@
 #include <header/VideoStitch.h>
 
 VideoStitcher::~VideoStitcher() {
-#ifdef REAL_TIME_STREAMING
-	logMsg(LOG_INFO, "Wait Server to finish");
-	if (mRSM != nullptr)
-		mRSM->waitForServerFinish();
-	logMsg(LOG_INFO, "Stitcher release");
-#endif
+	if (mIsRealTimeStreaming) {
+		logMsg(LOG_INFO, "Wait Server to finish");
+		if (mRSM != nullptr)
+			mRSM->waitForServerFinish();
+		logMsg(LOG_INFO, "Stitcher release");
+	}
 }
 
 VideoStitcher::VideoStitcher(int argc, char* argv[]) {
@@ -17,21 +17,30 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	loadConfig( getCmdOption(argv, argv + argc, "--config") );
 	mOH = getIntConfig("OUTPUT_PANO_HEIGHT");
 	mOW = getIntConfig("OUTPUT_PANO_WIDTH");
+	mIsRealTimeStreaming = (getIntConfig("REAL_TIME_STREAMING") == 1);
+	mUseSaliencyMapHandler = getStringConfig("USE_SALIENCY_MAP_HANDLER");
 	/** 
 		[Do preprocess]
 			1. Load videos
 			2. Load calibration files
 			3. Calculate projection matrixs
 	*/
+	logMsg(LOG_INFO, "=== Initialize Performance Analyzer ===");
+	mPA = shared_ptr<PerformanceAnalyzer>( new PerformanceAnalyzer() );
+
 	logMsg(LOG_INFO, "=== Do preprocess ===");
 	mVL = shared_ptr<VideoLoader>( new VideoLoader( getCmdOption(argv, argv + argc, "--input"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
 	logMsg(LOG_INFO, "=== Data loaded complete ===");
 
-#ifdef USE_SALIENCY_MAP_HANDLER
-	logMsg(LOG_INFO, "=== Initialize saliency map handler ===");
-	mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler( getCmdOption(argv, argv + argc, "--saliency"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
-	logMsg(LOG_INFO, "=== Data loaded complete ===");
-#endif
+	if (mUseSaliencyMapHandler.compare("FILE") == 0) {
+		logMsg(LOG_INFO, "=== Initialize saliency map handler from File ===");
+		mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler( getCmdOption(argv, argv + argc, "--saliency"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
+	} else if (mUseSaliencyMapHandler.compare("KLT") == 0) {
+		logMsg(LOG_INFO, "=== Initialize saliency map handler from KLT ===");
+		mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler( ) );
+	} else {
+		logMsg(LOG_INFO, "=== Run without salienct handler ===");
+	}
 
 	logMsg(LOG_INFO, "=== Initialize Sensor Server ===");
 	mVSS = shared_ptr<SensorServer>( new SensorServer() );
@@ -68,7 +77,7 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	logMsg(LOG_INFO, "=== Calculate projection matrix for all views ===");
 	mMP->calcProjectionMatrix();
 
-	#ifdef REAL_TIME_STREAMING
+	if (mIsRealTimeStreaming) {
 		logMsg(LOG_INFO, "=== Wait for user to connet ===");
 		if (getStringConfig("USING_PROTOCAL").compare("UDP") == 0) {
 			while ( !mVSS->isSensorWorks() );
@@ -82,7 +91,7 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 
 			while ( !mVSS->isSensorWorks() );
 		}
-	#endif
+	}
 }
 
 void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
@@ -98,16 +107,20 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	*/
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 
-//#ifndef REAL_TIME_STREAMING
-	//VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), CV_FOURCC('D', 'I', 'V', 'X'), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
 	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), mVL->getVideoType(), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
-//#endif
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
 	
 	Rect renderArea = Rect(0, 0, mOW, mOH);
 	Mat  renderMask = Mat(mOH, mOW, CV_8UC1, 1);
+
+	int saliencyMode = 0;
+	if (mUseSaliencyMapHandler.compare("FILE") == 0)
+		saliencyMode = 1;
+	else if (mUseSaliencyMapHandler.compare("KLT") == 0)
+		saliencyMode = 2;
+
 
 	for (int f=0; f<duration; f++) {
 		if (mVL->isCleanup())
@@ -137,34 +150,36 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			mVSS->getRenderArea(renderArea, renderMask);
 		}
 
-#ifndef USE_SALIENCY_MAP_HANDLER
-		mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask);
-		//imwrite(stringFormat("tmp2/pano_%d.png", f), targetCanvas);	
-#else
-		mMP->renderSmallSizePano(smallCanvas, frames);
-		//cv::resize(smallCanvas, targetCanvas, Size(mOW, mOH));
-		targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
+		boost::timer::cpu_timer boostTimer;
 
-		Mat saliencyFrame;
-		if ( !mSMH->getSaliencyFrame(saliencyFrame) ) 
-			exitWithMsg(E_RUNTIME_ERROR, "Error when get saliency frame");
-		mMP->renderSaliencyArea(targetCanvas, frames, saliencyFrame);
-		//imwrite(stringFormat("tmp2/pano_%d.png", f), targetCanvas);	
-#endif
-		//imwrite("tmp.png", smallCanvas);
-		//mVS->stablize(targetCanvas);
+		if ( saliencyMode > 0 ) {
+			mMP->renderSmallSizePano(smallCanvas, frames);
+			
+			Mat saliencyFrame;
+			if ( saliencyMode == 1 ) { // Saliency Map from file
+				if ( !mSMH->getSaliencyFrameFromVideo(saliencyFrame) ) 
+					exitWithMsg(E_RUNTIME_ERROR, "Error when get saliency frame");
+			} else if (saliencyMode == 2) { // Saliency Map from KLT
+				if ( !mSMH->calculateSaliencyFromKLT(smallCanvas, saliencyFrame) ) 
+					exitWithMsg(E_RUNTIME_ERROR, "Error when get saliency frame");
+			}
+			//cv::resize(smallCanvas, targetCanvas, Size(mOW, mOH));
+			targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
+			mMP->renderSaliencyArea(targetCanvas, frames, saliencyFrame);
+		} else { // No saliency 
+			mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask);
+		}
 		
-#ifdef REAL_TIME_STREAMING
-		mRSM->streamOutFrame(targetCanvas);
-#ifdef USE_SALIENCY_MAP_HANDLER		
-		mRSM->streamOutFrame_small(smallCanvas);
-#endif // USE_SALIENCY_MAP_HANDLER
-		//(*outputVideo) << targetCanvas;
-#else
+		if (mIsRealTimeStreaming) {
+			mRSM->streamOutFrame(targetCanvas);
+		} 
+
+		boostTimer.stop();
+		mPA->addExecTime(stod(boostTimer.format(3, "%w")));
+
 		(*outputVideo) << targetCanvas;
-#endif // REAL_TIME_STREAMING
-		mMP->increaseFrame();
+		mPA->increaseFrame();
 	}
-	mMP->checkFPS();
+	mPA->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
 }

@@ -15,6 +15,7 @@ LDFLAGS+=`pkg-config --libs opencv  gstreamer-1.0 gstreamer-rtsp-server-1.0` -L/
 SRC=src/core/src
 OBJ=obj
 SRC_FILES = $(wildcard $(SRC)/*.cpp)
+KLT_FILES = $(wildcard $(SRC)/KLT/*.cpp)
 DEPD = $(wildcard $(SRC)/header/.h)
 BIN=bin
 TMP=tmp
@@ -24,6 +25,7 @@ INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -I$(SRC) -I/usr/local/cuda-7.5/ta
 
 # All files
 OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
+OBJ_KLT_FILES := $(addprefix obj/KLT/,$(notdir $(KLT_FILES:.cpp=.o)))
 
 # Used for debug
 cccyan=$(shell echo "\033[0;36m")
@@ -46,7 +48,13 @@ $(OBJ)/%.o: $(SRC)/%.cpp $(SRC)/header/%.h
 	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"	
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 
 
-VideoStitch: $(OBJ_FILES) 
+$(OBJ)/KLT/%.o: $(SRC)/KLT/%.cpp $(SRC)/KLT/%.h
+	@mkdir -p $(OBJ)
+	@mkdir -p $(OBJ)/KLT
+	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"	
+	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 	
+
+VideoStitch: $(OBJ_FILES) $(OBJ_KLT_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? $(CFLAGS) -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS)
 
@@ -84,7 +92,7 @@ run:
 	@mkdir -p $(TMP)
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
-	$(BIN)/VideoStitch --input $(DATA)/inputVideo-1920.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
+	$(BIN)/VideoStitch --input $(DATA)/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
 
 runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi

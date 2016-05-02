@@ -13,6 +13,10 @@
 #include <atomic>
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
+#include "opencv2/imgproc.hpp"
+#include "KLT/VideoVolumeAnalyzer.h"
+
+using namespace cv;
 
 class SaliencyMapHandler {
 	private:
@@ -31,6 +35,15 @@ class SaliencyMapHandler {
 		int mGridThresh;
 		int mContainerSize;
 
+		/** For KLT */
+		unique_ptr<VideoVolumeAnalyzer> mVVA;
+		std::list<FeatureTracker*> mFeatureTrackers;
+		float mThreshKLT;
+		float* mFeatureCounter;
+		int mFW;
+		int mFH;
+		Mat mLastInfo;
+
 		void analyzeInfo(Mat img, Mat& info);
 		bool isCleanup();
 		bool wakeLoaderUp();
@@ -38,8 +51,11 @@ class SaliencyMapHandler {
 
 	public:
 		void loadSaliencyVideo(char* saliencyFileName);
-		bool getSaliencyFrame(Mat& frame);
-		SaliencyMapHandler(char* saliencyFileName, int duration);
+		bool getSaliencyFrameFromVideo(Mat& frame);
+		void getSaliencyInfoFromTrackers(Mat& info);
+		bool calculateSaliencyFromKLT(Mat& frame, Mat& saliencyInfo);
+		SaliencyMapHandler(); // For KTL
+		SaliencyMapHandler(char* saliencyFileName, int duration); // For file
 		~SaliencyMapHandler();
 		
 };

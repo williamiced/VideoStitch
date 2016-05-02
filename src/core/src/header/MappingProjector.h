@@ -32,14 +32,12 @@ using namespace cv::cuda;
 
 class MappingProjector {
 	private:
-		vector<double> mExecTimes;
-
 		shared_ptr<ExposureProcessor> mEP;
 		shared_ptr<BlendingProcessor> mBP;
 
 		int mDW, mDH;
 		int mOW, mOH;
-		unsigned int mFrameProcessed;
+		bool mUseSerializableResult;
 		int mViewCount;
 		Size mViewSize;
 		Size mOutputWindowSize;
@@ -73,7 +71,6 @@ class MappingProjector {
 
 	public:
 		MappingProjector(int viewCount, Size viewSize);
-		void increaseFrame();
 		void genExpoBlendingMap(vector<Mat> frames);
 		void renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask);
 		void renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyFrame);
@@ -82,7 +79,6 @@ class MappingProjector {
 		Size getOutputVideoSize();
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);
 		void setCameraParams(vector<Mat> Rs, vector<Mat> Ks);
-		void checkFPS();
 		void saveMatchInfos(vector<MatchInfo> matchInfos);
 };
 

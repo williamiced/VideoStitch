@@ -71,6 +71,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option);
 bool checkArguments(int argc, char** argv);
 
 int getIntConfig(string name);
+float getFloatConfig(string name);
 string getStringConfig(string name);
 
 void loadConfig(char* filename);

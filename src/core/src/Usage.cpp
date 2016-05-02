@@ -6,6 +6,10 @@ int getIntConfig(string name) {
     return stoi(CONFIG[name]);
 }
 
+float getFloatConfig(string name) {
+    return stof(CONFIG[name]);
+}
+
 string getStringConfig(string name) {
     return CONFIG[name];
 }
@@ -53,6 +57,8 @@ void loadConfig(char* filename) {
 
     string config;
     while (getline(inputFile, config)) {
+        if (config.find(":") == 0)
+            continue;
         // Parse
         int sep = config.find(":=");
         string key = config.substr(0, sep);

@@ -56,7 +56,7 @@ void SaliencyMapHandler::preloadSaliencyVideo() {
 	mIsProducerRun = false;	
 }
 
-bool SaliencyMapHandler::getSaliencyFrame(Mat& frame) {
+bool SaliencyMapHandler::getSaliencyFrameFromVideo(Mat& frame) {
 	if (isCleanup())
 		return false;
 
@@ -76,6 +76,58 @@ bool SaliencyMapHandler::getSaliencyFrame(Mat& frame) {
 	wakeLoaderUp();
 
 	return true;
+}
+
+bool SaliencyMapHandler::calculateSaliencyFromKLT(Mat& frame, Mat& saliencyInfo) {
+	Mat featureCanvas;
+	cv::resize(frame, featureCanvas, Size(mFW, mFH));
+	mVVA->process(featureCanvas);
+
+	mFeatureTrackers = mVVA->getActiveTrackers();
+
+	logMsg(LOG_DEBUG, stringFormat("Current is oK, feature num is %d", mFeatureTrackers.size() )) ;
+
+	getSaliencyInfoFromTrackers(saliencyInfo);
+
+	return true;
+}
+
+void SaliencyMapHandler::getSaliencyInfoFromTrackers(Mat& info) {
+	if (mCurrentFirstFrame % 5 != 0) {
+		mCurrentFirstFrame++;
+		info = mLastInfo;
+		return;
+	}
+
+	int h = mFH / mGridSize;
+	int w = mFW / mGridSize;
+
+	info = Mat::zeros(h, w, CV_8UC1);
+
+	memset(mFeatureCounter, 0, sizeof(float) * h*w);
+	float unit = 1.f / (mFeatureTrackers.size() + 1e-5); // Deal with divide-by-0 exception
+
+	for(FeatureTracker* tracker : mFeatureTrackers) {
+		Point p = tracker->getLastPoint();
+		int x = p.x / mGridSize;
+		int y = p.y / mGridSize;
+
+		mFeatureCounter[y*w+x] += unit;
+	}
+
+	for (int y=0; y<h; y++)
+		for (int x=0; x<w; x++)
+			info.at<uchar>(y, x) = mFeatureCounter[y*w+x] > mThreshKLT ? 255 : 0;
+
+  	/// Apply the dilation operation
+	
+	int dilation_size = 3;
+	Mat kernel = getStructuringElement (MORPH_ELLIPSE, Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ));
+	dilate( info, info, kernel );
+
+	mLastInfo = info;
+	
+	mCurrentFirstFrame++;
 }
 
 bool SaliencyMapHandler::wakeLoaderUp() {
@@ -100,12 +152,30 @@ SaliencyMapHandler::SaliencyMapHandler(char* saliencyFileName, int duration) :
 	mIsFinish(false), 
 	mDuration(duration),
  	mGridSize(getIntConfig("SALIENCY_GRID_SIZE")),
- 	mGridThresh(getIntConfig("SALIENCY_THRESH")),
+ 	mGridThresh(getIntConfig("EPSILON_F")),
  	mContainerSize(getIntConfig("VIDEO_CONTAINER_SIZE")) {
 
 	loadSaliencyVideo(saliencyFileName);
 }
 
+SaliencyMapHandler::SaliencyMapHandler() :
+	mCurrentFirstFrame(0),
+	mGridSize(getIntConfig("SALIENCY_GRID_SIZE")),
+ 	mThreshKLT(getFloatConfig("EPSILON_F_KLT")),
+ 	mFW(getIntConfig("FEATURE_CANVAS_WIDTH")),
+ 	mFH(getIntConfig("FEATURE_CANVAS_HEIGHT")) {
+
+ 	int h = mFH / mGridSize;
+	int w = mFW / mGridSize;
+	mFeatureCounter = new float[h*w];
+	mVVA = unique_ptr<VideoVolumeAnalyzer>( new VideoVolumeAnalyzer() );
+}
+
 SaliencyMapHandler::~SaliencyMapHandler() {
-	mSaliencyVideo->release();
+	if (mSaliencyVideo != nullptr)
+		mSaliencyVideo->release();
+	if (mVVA != nullptr)
+		mVVA.release();
+	if (mFeatureCounter != nullptr)
+		delete mFeatureCounter;
 }

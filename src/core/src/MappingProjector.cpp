@@ -71,11 +71,9 @@ void MappingProjector::saveSerialFile() {
 }
 
 void MappingProjector::calcProjectionMatrix() {
-#ifdef USING_SERIALIZABLE_RESULT
-	if ( checkSeriailFileExist(stringFormat("tmp/mask_0_%d_%d.srl", mOW, mOH)) ) {
+	if (mUseSerializableResult && checkSeriailFileExist(stringFormat("tmp/mask_0_%d_%d.srl", mOW, mOH)) ) {
 		loadSerialFile();
 	} else {
-#endif
 		// Initialize warpers
 		setupWarpers();
 		logMsg(LOG_INFO, "=== Constructing UV checkup table ===");
@@ -88,11 +86,9 @@ void MappingProjector::calcProjectionMatrix() {
 		refineCheckupTableByFeaturesMatching();
 		logMsg(LOG_INFO, "=== Refine complete ===");
 #endif	
-
-#ifdef USING_SERIALIZABLE_RESULT
-		saveSerialFile();
+		if (mUseSerializableResult)
+			saveSerialFile();
 	} 
-#endif
 	mBP->genWeightMapByMasks(mProjMasks);
 	mBP->newPreprocess();
 }
@@ -310,23 +306,12 @@ Size MappingProjector::getOutputVideoSize() {
 	return Size(mOW, mOH);
 }
 
-void MappingProjector::increaseFrame() {
-	mFrameProcessed++;
-}
-
-void MappingProjector::checkFPS() {
-	double total = 0.f;
-	for (unsigned int i=0; i<mExecTimes.size(); i++) 
-		total += mExecTimes[i];
-	logMsg(LOG_INFO, stringFormat( "=== Average FPS is %lf === ", mFrameProcessed / total ) );
-}
-
 MappingProjector::MappingProjector(int viewCount, Size viewSize) : 
 	mDW(getIntConfig("DOWN_SAMPLE_MAP_WIDTH")),
 	mDH(getIntConfig("DOWN_SAMPLE_MAP_HEIGHT")),
 	mOW(getIntConfig("OUTPUT_PANO_WIDTH")),
 	mOH(getIntConfig("OUTPUT_PANO_HEIGHT")),
-	mFrameProcessed(0),
+	mUseSerializableResult(getIntConfig("USING_SERIALIZABLE_RESULT") == 1),
 	mViewCount(viewCount),
 	mViewSize(viewSize) {
 		initialData();
@@ -358,8 +343,6 @@ void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
 }
 
 void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask) {
-	boost::timer::cpu_timer boostTimer;
-
 	outImg = Mat::zeros(mOH, mOW, CV_8UC3);
 	int y1 = renderArea.tl().y;
 	int y2 = renderArea.tl().y + renderArea.size().height;
@@ -382,14 +365,9 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 			}
 		}
 	}
-
-	boostTimer.stop();
-	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
 }
 
 void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyInfo) {
-	boost::timer::cpu_timer boostTimer;
-
 	if ( mEP->needFeed() )
 		genExpoBlendingMap(frames);
 
@@ -401,8 +379,8 @@ void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat s
 		for (int x=0; x<w; x++) {
 			if (saliencyInfo.at<uchar>(y, x) == 0) 
 				continue;
-			for (int y0 = y*mOH/h, counterY=0; counterY <= mOH/h; y0++, counterY++) {
-				for (int x0 = x*mOW/w, counterX=0; counterX <= mOW/w; x0++, counterX++) {
+			for (int y0 = y*mOH/h, counterY=0; counterY < mOH/h; y0++, counterY++) {
+				for (int x0 = x*mOW/w, counterX=0; counterX < mOW/w; x0++, counterX++) {
 					outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
 					for (int v=0; v<mViewCount; v++) {
 						if (mProjMasks[v].at<uchar>(y0, x0) != 0) {
@@ -416,13 +394,9 @@ void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat s
 			}
 		}
 	}
-	boostTimer.stop();
-	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );
 }
 
 void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
-	boost::timer::cpu_timer boostTimer;
-
 	outImg = Mat::zeros(mDH, mDW, CV_8UC3);
 	float ratioX = (float) mOW / mDW;
 	float ratioY = (float) mOH / mDH;
@@ -449,9 +423,6 @@ void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
 			}
 		}
 	}
-
-	boostTimer.stop();
-	mExecTimes.push_back( stod(boostTimer.format(3, "%w")) );	
 }
 
 
