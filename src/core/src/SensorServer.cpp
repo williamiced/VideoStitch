@@ -1,6 +1,6 @@
 #include <header/SensorServer.h>
 
-SensorServer::SensorServer() : mOrientation(new float[3]), mIsSensorWorks(false), mW(getIntConfig("OUTPUT_PANO_WIDTH")), mH(getIntConfig("OUTPUT_PANO_HEIGHT")) {
+SensorServer::SensorServer() : mOrientation(new float[3]), mIsSensorWorks(false), mW(getIntConfig("OUTPUT_PANO_WIDTH")), mH(getIntConfig("OUTPUT_PANO_HEIGHT")), mFovealDiameter(-1) {
     mServerThread = thread(&SensorServer::makeConnection, this);
 }
 
@@ -29,7 +29,8 @@ void SensorServer::makeConnection() {
     logMsg(LOG_INFO, "Sensor connection loop START!!", 3);
 
     while (true) {
-        readBytes = recvfrom(mSocketFD, buf, BUF_SIZE, 0, (struct sockaddr*)&clientAddr, (socklen_t *)&clientAddrSize) ;
+        readBytes = recvfrom(mSocketFD, buf, BUF_SIZE, 0, (struct sockaddr*)&clientAddr, (socklen_t *)&clientAddrSize);
+        //int result = sendto(mSocketFD, buf, BUF_SIZE, 0, (struct sockaddr*)&clientAddr, clientAddrSize);
 
         if (readBytes <= 0)
             break;
@@ -74,26 +75,58 @@ void SensorServer::getRenderArea(Rect& area, Mat& mask) {
     float uOffset = (55.f / 360.f);
     float vOffset = (55.f / 180.f);
 
-    float u0 = centerU - uOffset;
-    float u1 = centerU + uOffset;
-    float v0 = centerV - vOffset;
-    float v1 = centerV + vOffset;
+    float u0, u1, v0, v1;
     
-    if (u0 < 0 || u1 > 1) {
+    /*
+    if (mIsSensorWorks) {
+        u0 = centerU - uOffset;
+        u1 = centerU + uOffset;
+        v0 = centerV - vOffset;
+        v1 = centerV + vOffset;
+
+        if (u0 < 0 || u1 > 1) {
+            u0 = 0.f;
+            u1 = 1.f;
+        } 
+        if (v0 < 0 || v1 > 1) {
+            v0 = 0.f;
+            v1 = 1.f;
+        }
+    } else {
+        // debug
         u0 = 0.f;
         u1 = 1.f;
-    } 
-    if (v0 < 0 || v1 > 1) {
         v0 = 0.f;
-        v1 = 1.f;
+        v1 = 1.f;    
     }
-    
-    // debug
+    */
     u0 = 0.f;
     u1 = 1.f;
     v0 = 0.f;
-    v1 = 1.f;
-
+    v1 = 1.f;    
+    
     area = Rect(u0 * mW, v0 * mH, (u1-u0) * mW, (v1-v0) * mH);
     mask = Mat((v1-v0) * mH, (u1-u0) * mW, CV_8UC1, 1);
+}
+
+void SensorServer::getFovealInfo(int& renderDiameter, Point2f& renderCenter) {
+    // 4320: 1200
+    // 2160: 600
+    // 1440: 400
+    if (mFovealDiameter < 0) {
+        float pixelDensity = (getIntConfig("OUTPUT_PANO_WIDTH") / 3.6f)  / 138.5f;     // px/mm
+        float userDist = 100.f;                // mm
+        float worstLatency = 150.f;             // ms
+        float maxSaccadicSpeed = (0.2f / 180.f) * M_PI;
+        float subtendedAngle = (5.f / 180.f) * M_PI;
+        float blendingBorder = 10.f;            
+        float errorConstant = 0.f;
+
+        mFovealDiameter = static_cast<int>(2.f * pixelDensity * userDist * tan(worstLatency * maxSaccadicSpeed + subtendedAngle / 2.f) + 2.f * blendingBorder + errorConstant);
+    }
+    renderDiameter = mFovealDiameter;
+    float centerU = (mOrientation[0] + M_PI) / (2 * M_PI);
+    float centerV = (M_PI - fabs(mOrientation[2]) ) / M_PI;
+
+    renderCenter = Point2f(centerU, centerV);
 }

@@ -114,13 +114,14 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	
 	Rect renderArea = Rect(0, 0, mOW, mOH);
 	Mat  renderMask = Mat(mOH, mOW, CV_8UC1, 1);
+	int  renderDiameter = getIntConfig("OUTPUT_PANO_WIDTH");
+	Point2f renderCenter = Point2f(0.5f, 0.5f);
 
 	int saliencyMode = 0;
 	if (mUseSaliencyMapHandler.compare("FILE") == 0)
 		saliencyMode = 1;
 	else if (mUseSaliencyMapHandler.compare("KLT") == 0)
 		saliencyMode = 2;
-
 
 	for (int f=0; f<duration; f++) {
 		if (mVL->isCleanup())
@@ -147,7 +148,10 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			continue;
 		
 		if (mVSS->isSensorWorks()) {
-			mVSS->getRenderArea(renderArea, renderMask);
+			if (saliencyMode > 0) 
+				mVSS->getFovealInfo(renderDiameter, renderCenter);
+			else
+				mVSS->getRenderArea(renderArea, renderMask);
 		}
 
 		boost::timer::cpu_timer boostTimer;
@@ -165,7 +169,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			}
 			//cv::resize(smallCanvas, targetCanvas, Size(mOW, mOH));
 			targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
-			mMP->renderSaliencyArea(targetCanvas, frames, saliencyFrame);
+			mMP->renderSaliencyArea(targetCanvas, frames, saliencyFrame, renderDiameter, renderCenter);
 		} else { // No saliency 
 			mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask);
 		}
@@ -175,10 +179,13 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		} 
 
 		boostTimer.stop();
-		mPA->addExecTime(stod(boostTimer.format(3, "%w")));
+		if (f != 0)
+			mPA->addExecTime(stod(boostTimer.format(3, "%w")));
 
 		(*outputVideo) << targetCanvas;
-		mPA->increaseFrame();
+
+		if (f != 0)
+			mPA->increaseFrame();
 	}
 	mPA->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");

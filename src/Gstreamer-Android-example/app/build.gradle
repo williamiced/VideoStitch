@@ -38,8 +38,8 @@ dependencies {
     // Just debug info
     println("$buildDir/libs")
     compile 'com.android.support:appcompat-v7:23.2.0'
-    //compile project(':rajawalicardboard')
-    compile 'org.rajawali3d:rajawali:1.1.337@aar'
+    compile project(':rajawali')
+    //compile 'org.rajawali3d:rajawali:1.1.337@aar'
 }
 
 // Before compiling our app, prepare NDK code

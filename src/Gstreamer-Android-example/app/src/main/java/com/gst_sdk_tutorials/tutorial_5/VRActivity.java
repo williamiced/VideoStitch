@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
@@ -32,9 +34,12 @@ public class VRActivity extends CardboardActivity {
     private native void nativeSurfaceFinalize();
     private long native_custom_data;
 
+    private boolean mIsUseCardboard = false;
+
     private Context mContext;
     private CardboardView mSurfaceView;
     private MyRenderer mRenderer;
+    MySensorClient mSensorClient;
 
     static {
         System.loadLibrary("gstreamer_android");
@@ -51,6 +56,10 @@ public class VRActivity extends CardboardActivity {
             finish();
             return;
         }
+    }
+
+    private void initSensorClient() {
+        mSensorClient = new MySensorClient(this, getString(R.string.addr), Integer.parseInt(getString(R.string.port)));
     }
 
     private void initCardboard() {
@@ -78,8 +87,29 @@ public class VRActivity extends CardboardActivity {
         mSurfaceView.setSystemUiVisibility(uiFlags);
 
         setCardboardView(mSurfaceView);
+    }
 
-        nativeInit(true);
+    private void initSurfaceView() {
+        setContentView(R.layout.main);
+
+        SurfaceView sv = (SurfaceView) this.findViewById(R.id.surface_video);
+        SurfaceHolder sh = sv.getHolder();
+        sh.addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+                nativeSurfaceInit(holder.getSurface());
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+                nativeSurfaceFinalize();
+            }
+         });
     }
 
     @Override
@@ -89,7 +119,14 @@ public class VRActivity extends CardboardActivity {
         mContext = this;
 
         initGStreamer();
-        initCardboard();
+
+        if (mIsUseCardboard)
+            initCardboard();
+        else
+            initSurfaceView();
+
+        initSensorClient();
+        nativeInit(true);
     }
 
     protected void setRenderer(VRRenderer renderer) {
@@ -102,6 +139,8 @@ public class VRActivity extends CardboardActivity {
 
     @Override
     protected void onDestroy() {
+        if (mSensorClient != null)
+            mSensorClient.waitThread();
         nativeFinalize();
         super.onDestroy();
     }

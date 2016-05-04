@@ -13,6 +13,7 @@
 #include <header/Params.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <header/Usage.h>
 
 #define SERV_PORT 9527
 #define BUF_SIZE 1024
@@ -29,6 +30,7 @@ class SensorServer {
 		bool mIsSensorWorks;
 		thread mServerThread;
 		int mW, mH;
+		float mFovealDiameter;
 
 		void makeConnection();
 		void parseSensorInfo(char* buf);
@@ -36,6 +38,7 @@ class SensorServer {
 
 	public:
 		SensorServer();
+		void getFovealInfo(int& renderDiameter, Point2f& renderCenter);
 		void getRenderArea(Rect& area, Mat& mask);
 		bool isSensorWorks();
 		string getClientIP();

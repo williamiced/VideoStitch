@@ -13,3 +13,28 @@ allprojects {
         jcenter()
     }
 }
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+def isReleaseBuild() {
+    return isTag() && !isSnapshot()
+}
+
+def isSnapshot() {
+    return version.contains("SNAPSHOT")
+}
+
+boolean isTravis() {
+    return System.getenv('TRAVIS_BUILD_NUMBER') ? true : false
+}
+
+boolean isTag() {
+    def tag = System.getenv('TRAVIS_TAG')
+    return !(tag == null || tag.isEmpty())
+}
+
+def buildNumber() {
+    return System.getenv('TRAVIS_BUILD_NUMBER') ?: "0"
+}

@@ -79,6 +79,8 @@ bool SaliencyMapHandler::getSaliencyFrameFromVideo(Mat& frame) {
 }
 
 bool SaliencyMapHandler::calculateSaliencyFromKLT(Mat& frame, Mat& saliencyInfo) {
+	//SETUP_TIMER
+
 	Mat featureCanvas;
 	cv::resize(frame, featureCanvas, Size(mFW, mFH));
 	mVVA->process(featureCanvas);
@@ -121,9 +123,14 @@ void SaliencyMapHandler::getSaliencyInfoFromTrackers(Mat& info) {
 
   	/// Apply the dilation operation
 	
-	int dilation_size = 3;
+	int dilation_size = 5;
 	Mat kernel = getStructuringElement (MORPH_ELLIPSE, Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ));
 	dilate( info, info, kernel );
+
+	int erode_size = 1;
+	Mat kernel2 = getStructuringElement (MORPH_ELLIPSE, Size( 2*erode_size + 1, 2*erode_size+1 ), Point( erode_size, erode_size ));
+	for (int i=0; i<4; i++)
+		erode( info, info, kernel2 );
 
 	mLastInfo = info;
 	

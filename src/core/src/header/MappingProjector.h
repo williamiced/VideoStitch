@@ -17,6 +17,8 @@
 #include <header/Params.h>
 #include <header/Usage.h>
 
+#include <Cuda/Accelerator.h>
+
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/split_free.hpp>
@@ -73,8 +75,9 @@ class MappingProjector {
 		MappingProjector(int viewCount, Size viewSize);
 		void genExpoBlendingMap(vector<Mat> frames);
 		void renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask);
-		void renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyFrame);
+		void renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyFrame, int renderDiameter, Point2f renderCenter);
 		void renderSmallSizePano(Mat& outImg, vector<Mat> frames);
+		bool isInDiameter(Point c, Point p, int w, int gridSize, int dSize);
 		void calcProjectionMatrix();
 		Size getOutputVideoSize();
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);

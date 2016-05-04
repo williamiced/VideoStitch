@@ -1,20 +1,23 @@
 # C++ Compiler
 CC=g++ -std=c++14
-
-# Using Debug flags
-CFLAGS=-Wall -O3
+NCC=nvcc -std=c++11
 
 # Using for clearer error finding
 BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
 
-# For OpenCV support
-CFLAGS+=`pkg-config --cflags opencv gstreamer-1.0 gstreamer-rtsp-server-1.0` -fopenmp
-LDFLAGS+=`pkg-config --libs opencv  gstreamer-1.0 gstreamer-rtsp-server-1.0` -L/usr/local/cuda-7.5/lib64 -lboost_system -lboost_timer -lgomp -lglut -lGL -lGLEW -lGLU  -pthread -lboost_serialization
+BASE_C_FLAG=`pkg-config --cflags opencv gstreamer-1.0 gstreamer-rtsp-server-1.0`
+BASE_LD_FLAG=`pkg-config --libs opencv  gstreamer-1.0 gstreamer-rtsp-server-1.0` -L/usr/local/cuda-7.5/lib64
+
+CFLAGS=$(BASE_C_FLAG)
+CFLAGS+=-Wall -O3 -fopenmp
+LDFLAGS=$(BASE_LD_FLAG)
+LDFLAGS+=-lboost_system -lboost_timer -lgomp -lglut -lGL -lGLEW -lGLU -lboost_serialization -lcuda -lcudart
 
 # Paths
 SRC=src/core/src
 OBJ=obj
 SRC_FILES = $(wildcard $(SRC)/*.cpp)
+CUDA_FILES = $(wildcard $(SRC)/Cuda/*.cu)
 KLT_FILES = $(wildcard $(SRC)/KLT/*.cpp)
 DEPD = $(wildcard $(SRC)/header/.h)
 BIN=bin
@@ -26,6 +29,7 @@ INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -I$(SRC) -I/usr/local/cuda-7.5/ta
 # All files
 OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
 OBJ_KLT_FILES := $(addprefix obj/KLT/,$(notdir $(KLT_FILES:.cpp=.o)))
+OBJ_CUDA_FILES := $(addprefix obj/Cuda/,$(notdir $(CUDA_FILES:.cu=.o)))
 
 # Used for debug
 cccyan=$(shell echo "\033[0;36m")
@@ -54,9 +58,15 @@ $(OBJ)/KLT/%.o: $(SRC)/KLT/%.cpp $(SRC)/KLT/%.h
 	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"	
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 	
 
-VideoStitch: $(OBJ_FILES) $(OBJ_KLT_FILES)
+$(OBJ)/Cuda/%.o: $(SRC)/Cuda/%.cu $(SRC)/Cuda/%.h
+	@mkdir -p $(OBJ)
+	@mkdir -p $(OBJ)/Cuda
+	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"	
+	$(NCC) $(INC) -c -o $@ $< 
+
+VideoStitch: $(OBJ_FILES) $(OBJ_KLT_FILES) $(OBJ_CUDA_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
-	$(CC) $? $(CFLAGS) -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS)
+	$(CC) $? $(CFLAGS) -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS) $(LDFLAGS)
 
 SaliencyMapExtractor:
 	$(CC) $(CFLAGS) $? -I. tools/SaliencyMapExtractor/SaliencyMapExtractor.cpp -o $(BIN)/$@ $(LDFLAGS)
@@ -92,6 +102,7 @@ run:
 	@mkdir -p $(TMP)
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
+	#$(BIN)/VideoStitch --input data/2016-05-04/test01/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
 	$(BIN)/VideoStitch --input $(DATA)/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
 
 runPR:

@@ -16,6 +16,7 @@
 #include <boost/assign/list_of.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/current_function.hpp>
+#include <boost/timer/timer.hpp>
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
 

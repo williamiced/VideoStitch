@@ -159,15 +159,15 @@ static void *app_function (void *userdata) {
 
     /* Build pipeline */
     //data->pipeline = gst_parse_launch("videotestsrc ! videoconvert ! glimagesink", &error);
-    data->pipeline = gst_parse_launch("filesrc location=/sdcard/Download/test.mp4 ! decodebin ! videoconvert ! glimagesink", &error);
-    //data->pipeline = gst_parse_launch("playbin uri=\"http://docs.gstreamer.com/media/sintel_trailer-368p.ogv\"", &error);
-    //data->pipeline = gst_parse_launch("playbin uri=\"http://www.cmlab.csie.ntu.edu.tw/~wlee/test/test.mp4\"", &error);
+    data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! glimagesink", &error);
+    //data->pipeline = gst_parse_launch("filesrc location=/sdcard/Download/test.mp4 ! decodebin ! videoconvert ! glimagesink name=sink", &error);
 
     data->video_sink = gst_bin_get_by_interface(GST_BIN(data->pipeline), GST_TYPE_VIDEO_OVERLAY);
     if (!data->video_sink) {
         GST_ERROR ("Could not retrieve video sink");
         return NULL;
     }
+
     /*
     if (data->isTCP)
         // TCP Ver.
@@ -197,6 +197,10 @@ static void *app_function (void *userdata) {
     g_signal_connect (G_OBJECT (bus), "message::error", (GCallback)error_cb, data);
     g_signal_connect (G_OBJECT (bus), "message::state-changed", (GCallback)state_changed_cb, data);
     gst_object_unref (bus);
+
+    GstElement* sink = gst_bin_get_by_name (GST_BIN (data->pipeline), "sink");
+    
+
 
     /* Create a GLib Main Loop and set it to run */
     GST_DEBUG ("Entering main loop... (CustomData:%p)", data);

@@ -89,15 +89,24 @@ if __name__ == '__main__':
 	testX, testY = splitData(testDataList, 30)
 
 	# Draw
-	npTestY = np.array(testY)
+	absoluteLoc = []
+	currentLoc = [0., 0., 0.]
+	for i in range(0, len(testY)):
+		for t in range(0, 3):
+			currentLoc[t] += testY[i][t]
+			if currentLoc[t] < -math.pi:
+				currentLoc[t] += math.pi
+		absoluteLoc.append(list(currentLoc) )
+
+	npTestY = np.array(absoluteLoc)
 	plt.plot(npTestY[:,0], 'b-', npTestY[:,1], 'r-', npTestY[:,2], 'g-')
-	plt.axis([0, len(testY), -0.2, 0.2])
+	plt.axis([len(testY)/50, len(testY)/10, -3.14, 3.14])
 	plt.show()
 
 	# Get simple file name
 	trainDataListFileNameSimple = trainDataListFileName[(trainDataListFileName.rfind('/')+1):(trainDataListFileName.rfind('.'))]
 
-	
+	'''
 	print "Start training..."
 	clf = RandomForestRegressor(n_estimators=500).fit(trainX, trainY)
 
@@ -114,7 +123,7 @@ if __name__ == '__main__':
 	testResult = []
 	for i in range(0, len(testY)):
 		testResult.append( [0., 0., 0.] )
-	'''
+	
 	
 	print "Done prediction"
 	errX, errY, errZ = scorePrediction(testResult, testY)

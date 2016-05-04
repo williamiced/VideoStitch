@@ -340,6 +340,22 @@ void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
 	mEP->feedExposures(mWarpedImgs, mProjMasks);
 	mBP->genFinalMap(mEP->gains());
 	mBP->getFinalMap(mFinalBlendingMap);
+
+#ifdef USE_GPU
+	logMsg(LOG_INFO, "=== Start register reference map to GPU ===");
+	vector<unsigned char*> mapXArr;
+	vector<unsigned char*> mapYArr;
+	vector<unsigned char*> blendMapArr;
+
+	for (int v=0; v<mViewCount; v++) {
+		mapXArr.push_back(mProjMapX[v].data);
+		mapYArr.push_back(mProjMapY[v].data);
+		blendMapArr.push_back(mFinalBlendingMap[v].data);
+	}
+	registerRefMap(mapXArr, mapYArr, blendMapArr, mViewCount, mOW, mOH);
+
+	logMsg(LOG_INFO, "=== Finish registration ===");
+#endif
 }
 
 void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask) {
@@ -367,20 +383,41 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 	}
 }
 
-void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyInfo) {
+bool MappingProjector::isInDiameter(Point c, Point p, int w, int gridSize, int dSize) {
+	int x = abs(c.x - p.x);
+	x = x < w/2 ? x : w-x;
+	int y = (c.y - p.y);
+
+	return (sqrt(x*x+y*y) * gridSize) < dSize;
+}
+
+void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyInfo, int renderDiameter, Point2f renderCenter) {
 	if ( mEP->needFeed() )
 		genExpoBlendingMap(frames);
-
 	int h = saliencyInfo.rows;
 	int w = saliencyInfo.cols;
 
+	int gridSize = outImg.rows / h;
+
+	// Scale the center to match salinecy map
+	Point center = Point(static_cast<int>(renderCenter.x * w), static_cast<int>(renderCenter.y * h) );
+
+#ifdef USE_GPU
+	vector<unsigned char*> framesArr;
+	for (int v=0; v<mViewCount; v++)
+		framesArr.push_back(frames[v].data);
+
+	copyFrames(framesArr, mViewCount, frames[0].channels(), frames[0].cols, frames[0].rows);
+	renderSaliencyAreaCuda(mViewCount, frames[0].cols, frames[0].rows, frames[0].channels(), w, h, gridSize, renderDiameter, center.x, center.y, outImg.cols, outImg.rows, outImg.channels(), 
+		saliencyInfo.data, outImg.data);
+#else
 	#pragma omp parallel for collapse(2) 
 	for (int y=0 ;y<h; y++) {
 		for (int x=0; x<w; x++) {
-			if (saliencyInfo.at<uchar>(y, x) == 0) 
+			if (saliencyInfo.at<uchar>(y, x) == 0 || !isInDiameter(center, Point(x, y), w, gridSize, renderDiameter) ) 
 				continue;
-			for (int y0 = y*mOH/h, counterY=0; counterY < mOH/h; y0++, counterY++) {
-				for (int x0 = x*mOW/w, counterX=0; counterX < mOW/w; x0++, counterX++) {
+			for (int y0 = y*gridSize, counterY=0; counterY < gridSize; y0++, counterY++) {
+				for (int x0 = x*gridSize, counterX=0; counterX < gridSize; x0++, counterX++) {
 					outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
 					for (int v=0; v<mViewCount; v++) {
 						if (mProjMasks[v].at<uchar>(y0, x0) != 0) {
@@ -394,6 +431,7 @@ void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat s
 			}
 		}
 	}
+#endif
 }
 
 void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
