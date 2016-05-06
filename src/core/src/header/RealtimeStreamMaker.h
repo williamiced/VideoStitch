@@ -26,6 +26,9 @@ typedef struct _App {
   guint sourceid;
   GstClockTime timestamp;
   GTimer* timer;
+  GstRTSPServer* server;
+  GstRTSPMountPoints* mounts;
+  GstRTSPMediaFactory* factory;
 } MyApp;
 
 class RealtimeStreamMaker {
@@ -40,6 +43,8 @@ class RealtimeStreamMaker {
 		static void start_feed (GstElement* pl, guint size, MyApp* app);
 		static void stop_feed (GstElement* pl, MyApp* app);
 		static void runInBackground();
+		static void media_configure(GstRTSPMediaFactory *factory, GstRTSPMedia *media, gpointer user_data);
+		static void rtspNeedData (GstElement* pl, guint unused_size, MyApp* app);
 		void waitForServerFinish();
 		void streamOutFrame(Mat frame);
     	RealtimeStreamMaker(int argc, char* argv[], string clientIP);

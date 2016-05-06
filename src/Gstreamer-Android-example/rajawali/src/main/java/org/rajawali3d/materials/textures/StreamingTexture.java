@@ -17,6 +17,7 @@ import android.hardware.Camera;
 import android.media.MediaPlayer;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.util.Log;
 import android.view.Surface;
 
 import java.io.IOException;
@@ -65,11 +66,12 @@ public class StreamingTexture extends ATexture {
 
     void add() throws TextureException {
         int[] textures = new int[1];
+        Log.d("Rajawali", "add texture");
         GLES20.glGenTextures(1, textures, 0);
         int textureId = textures[0];
         GLES20.glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId);
         GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES,
-            GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
         GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES,
             GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
         GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES,
@@ -89,7 +91,8 @@ public class StreamingTexture extends ATexture {
                 throw new TextureException(e);
             }
         } else if (mSurfaceListener != null) {
-            mSurfaceListener.setSurface(new Surface(mSurfaceTexture));
+            mSurface = new Surface(mSurfaceTexture);
+            mSurfaceListener.setSurface(mSurface);
         }
     }
 

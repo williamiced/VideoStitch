@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId "com.gst_sdk_tutorials.tutorial_5"
-        minSdkVersion 16
+        minSdkVersion 17
         targetSdkVersion 22
 
         ndk {

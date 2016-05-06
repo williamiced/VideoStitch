@@ -3,9 +3,16 @@ package com.gst_sdk_tutorials.tutorial_5;
 import android.app.ActionBar;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
+import android.media.MediaPlayer;
+import android.opengl.EGL14;
+import android.opengl.EGLContext;
+import android.opengl.EGLDisplay;
+import android.opengl.EGLSurface;
+import android.opengl.GLES20;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -21,6 +28,9 @@ import com.google.vrtoolkit.cardboard.CardboardView;
 import org.freedesktop.gstreamer.GStreamer;
 import org.rajawali3d.materials.textures.StreamingTexture;
 
+import javax.microedition.khronos.egl.EGL11;
+
+
 /**
  * @author dennis.ippel
  */
@@ -30,11 +40,11 @@ public class VRActivity extends CardboardActivity {
     private native void nativePlay();     // Set pipeline to PLAYING
     private native void nativePause();    // Set pipeline to PAUSED
     private static native boolean nativeClassInit(); // Initialize native class: cache Method IDs for callbacks
-    private native void nativeSurfaceInit(Object surface);
+    private native void nativeSurfaceInit(Object surface, Object context, Object display);
     private native void nativeSurfaceFinalize();
     private long native_custom_data;
 
-    private boolean mIsUseCardboard = false;
+    private boolean mIsUseCardboard = true;
 
     private Context mContext;
     private CardboardView mSurfaceView;
@@ -64,11 +74,18 @@ public class VRActivity extends CardboardActivity {
 
     private void initCardboard() {
         mSurfaceView = new VRSurfaceView(this);
+        Log.d("MyVRActivity", "initCardboard()");
         mRenderer = new MyRenderer(this, new StreamingTexture.ISurfaceListener() {
             @Override
             public void setSurface(Surface surface) {
-                Log.d("MyVRActivity", "Run surface init: " + surface);
-                nativeSurfaceInit(surface);
+                EGLContext c = EGL14.eglGetCurrentContext();
+                EGLDisplay d = EGL14.eglGetCurrentDisplay();
+                if (c == EGL14.EGL_NO_CONTEXT)
+                    Log.d("MyVRActivity", "Damn");
+                else
+                    Log.d("MyVRActivity", "Great");
+
+                nativeSurfaceInit(surface, c, d);
             }
         });
         setRenderer(mRenderer);
@@ -102,14 +119,14 @@ public class VRActivity extends CardboardActivity {
 
             @Override
             public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-                nativeSurfaceInit(holder.getSurface());
+                //nativeSurfaceInit(holder.getSurface());
             }
 
             @Override
             public void surfaceDestroyed(SurfaceHolder holder) {
                 nativeSurfaceFinalize();
             }
-         });
+        });
     }
 
     @Override
@@ -147,6 +164,12 @@ public class VRActivity extends CardboardActivity {
 
     private void onGStreamerInitialized () {
         nativePlay();
+    }
+
+    private void specialTest() {
+        GLES20.glGetString(GLES20.GL_SHADING_LANGUAGE_VERSION);
+        GLES20.glGetString(GLES20.GL_VERSION);
+        GLES20.glGetString(GLES20.GL_SHADING_LANGUAGE_VERSION);
     }
 
     private void setMessage(final String message){

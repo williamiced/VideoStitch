@@ -5,6 +5,8 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <gst/gst.h>
+#include <gst/gl/gstglcontext.h>
+#include <gst/gl/egl/gstegl.h>
 #include <gst/video/video.h>
 #include <gst/video/videooverlay.h>
 #include <pthread.h>
@@ -34,6 +36,7 @@ typedef struct _CustomData {
     gboolean isTCP;
     GstElement* video_sink;
     ANativeWindow *native_window; /* The Android native window where video will be rendered */
+    GstGLContext* gl_context; /* get this from the application somehow */
 } CustomData;
 
 /* These global variables cache values which are not changing during execution */
@@ -42,6 +45,7 @@ static pthread_key_t current_jni_env;
 static JavaVM *java_vm;
 static jfieldID custom_data_field_id;
 static jmethodID set_message_method_id;
+static jmethodID special_test_method_id;
 static jmethodID on_gstreamer_initialized_method_id;
 
 /*
@@ -128,6 +132,7 @@ static void state_changed_cb (GstBus *bus, GstMessage *msg, CustomData *data) {
  * These conditions will change depending on the application */
 static void check_initialization_complete (CustomData *data) {
     JNIEnv *env = get_jni_env ();
+
     if (!data->initialized && data->native_window && data->main_loop) {
         GST_DEBUG ("Initialization complete, notifying application. native_window:%p main_loop:%p", data->native_window, data->main_loop);
 
@@ -143,6 +148,48 @@ static void check_initialization_complete (CustomData *data) {
     }
 }
 
+static gboolean
+my_bus_callback (GstBus     *bus,
+                 GstMessage *msg,
+                 gpointer    data)
+{
+    switch (GST_MESSAGE_TYPE (msg)) {
+        case GST_MESSAGE_NEED_CONTEXT:
+        {
+            if ( ((CustomData*)data)->gl_context == 0 )
+                return TRUE;
+            else {
+                GST_DEBUG("Trigger bus, %p", ((CustomData *) data)->gl_context);
+
+                const gchar *context_type;
+                GstContext *context = NULL;
+
+                gst_message_parse_context_type(msg, &context_type);
+                g_print("got need context %s\n", context_type);
+
+                if (g_strcmp0(context_type, "gst.gl.app_context") == 0) {
+                    GstStructure *s;
+
+                    context = gst_context_new("gst.gl.app_context", TRUE);
+                    s = gst_context_writable_structure(context);
+                    gst_structure_set(s, "context", GST_GL_TYPE_CONTEXT,
+                                      ((CustomData *) data)->gl_context, NULL);
+
+                    gst_element_set_context(GST_ELEMENT(msg->src), context);
+                }
+                if (context)
+                    gst_context_unref(context);
+                break;
+            }
+        }
+        default:
+            break;
+    }
+
+    return TRUE;
+}
+
+
 /* Main method for the native code. This is executed on its own thread. */
 static void *app_function (void *userdata) {
     JavaVMAttachArgs args;
@@ -150,6 +197,9 @@ static void *app_function (void *userdata) {
     CustomData *data = (CustomData *)userdata;
     GSource *bus_source;
     GError *error = NULL;
+
+    gchar* versionStr = gst_version_string();
+    GST_DEBUG ("Version: %s", versionStr);
 
     GST_DEBUG ("Creating pipeline in CustomData at %p", data);
 
@@ -159,8 +209,8 @@ static void *app_function (void *userdata) {
 
     /* Build pipeline */
     //data->pipeline = gst_parse_launch("videotestsrc ! videoconvert ! glimagesink", &error);
-    data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! glimagesink", &error);
-    //data->pipeline = gst_parse_launch("filesrc location=/sdcard/Download/test.mp4 ! decodebin ! videoconvert ! glimagesink name=sink", &error);
+    //data->pipeline = gst_parse_launch("tcpclientsrc host=192.168.1.188 port=5000 ! decodebin ! videoconvert ! glimagesink", &error);
+    data->pipeline = gst_parse_launch("filesrc location=/sdcard/Download/test.mp4 ! decodebin ! videoconvert ! glimagesink name=sink", &error);
 
     data->video_sink = gst_bin_get_by_interface(GST_BIN(data->pipeline), GST_TYPE_VIDEO_OVERLAY);
     if (!data->video_sink) {
@@ -188,9 +238,11 @@ static void *app_function (void *userdata) {
     /* Set the pipeline to READY, so it can already accept a window handle, if we have one */
     gst_element_set_state(data->pipeline, GST_STATE_READY);
 
+    guint bus_watch_id;
     /* Instruct the bus to emit signals for each received message, and connect to the interesting signals */
     bus = gst_element_get_bus (data->pipeline);
     bus_source = gst_bus_create_watch (bus);
+    bus_watch_id = gst_bus_add_watch (bus, my_bus_callback, data);
     g_source_set_callback (bus_source, (GSourceFunc) gst_bus_async_signal_func, NULL, NULL);
     g_source_attach (bus_source, data->context);
     g_source_unref (bus_source);
@@ -198,18 +250,18 @@ static void *app_function (void *userdata) {
     g_signal_connect (G_OBJECT (bus), "message::state-changed", (GCallback)state_changed_cb, data);
     gst_object_unref (bus);
 
-    GstElement* sink = gst_bin_get_by_name (GST_BIN (data->pipeline), "sink");
-    
-
 
     /* Create a GLib Main Loop and set it to run */
     GST_DEBUG ("Entering main loop... (CustomData:%p)", data);
     data->main_loop = g_main_loop_new (data->context, FALSE);
+
     check_initialization_complete (data);
     g_main_loop_run (data->main_loop);
     GST_DEBUG ("Exited main loop");
     g_main_loop_unref (data->main_loop);
     data->main_loop = NULL;
+
+    g_source_remove(bus_watch_id);
 
     /* Free resources */
     g_main_context_pop_thread_default(data->context);
@@ -274,9 +326,10 @@ static void gst_native_pause (JNIEnv* env, jobject thiz) {
 static jboolean gst_native_class_init (JNIEnv* env, jclass klass) {
     custom_data_field_id = (*env)->GetFieldID (env, klass, "native_custom_data", "J");
     set_message_method_id = (*env)->GetMethodID (env, klass, "setMessage", "(Ljava/lang/String;)V");
+    special_test_method_id = (*env)->GetMethodID (env, klass, "specialTest", "()V");
     on_gstreamer_initialized_method_id = (*env)->GetMethodID (env, klass, "onGStreamerInitialized", "()V");
 
-    if (!custom_data_field_id || !set_message_method_id || !on_gstreamer_initialized_method_id) {
+    if (!custom_data_field_id || !set_message_method_id || !special_test_method_id || !on_gstreamer_initialized_method_id) {
         /* We emit this message through the Android log instead of the GStreamer log because the later
          * has not been initialized yet.
          */
@@ -286,9 +339,15 @@ static jboolean gst_native_class_init (JNIEnv* env, jclass klass) {
     return JNI_TRUE;
 }
 
-static void gst_native_surface_init (JNIEnv *env, jobject thiz, jobject surface) {
+static void gst_native_surface_init (JNIEnv *env, jobject thiz, jobject surface, jobject context, jobject display) {
     CustomData *data = GET_CUSTOM_DATA (env, thiz, custom_data_field_id);
     if (!data) return;
+
+    //gst_gl_context_get_gl_context(data->gl_context);
+    GstGLDisplay *glDisplay;
+    glDisplay = (GstGLDisplay *)gst_gl_display_egl_new_with_egl_display( (EGLDisplay) display );
+    data->gl_context = gst_gl_context_new_wrapped( glDisplay, (guintptr) context, GST_GL_PLATFORM_EGL, GST_GL_API_GLES2 );
+
     ANativeWindow *new_native_window = ANativeWindow_fromSurface(env, surface);
     GST_DEBUG ("Received surface %p (native window %p)", surface, new_native_window);
 
@@ -307,7 +366,6 @@ static void gst_native_surface_init (JNIEnv *env, jobject thiz, jobject surface)
         }
     }
     data->native_window = new_native_window;
-
     check_initialization_complete (data);
 }
 
@@ -333,7 +391,7 @@ static JNINativeMethod native_methods[] = {
         { "nativeFinalize", "()V", (void *) gst_native_finalize},
         { "nativePlay", "()V", (void *) gst_native_play},
         { "nativePause", "()V", (void *) gst_native_pause},
-        { "nativeSurfaceInit", "(Ljava/lang/Object;)V", (void *) gst_native_surface_init},
+        { "nativeSurfaceInit", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V", (void *) gst_native_surface_init},
         { "nativeSurfaceFinalize", "()V", (void *) gst_native_surface_finalize},
         { "nativeClassInit", "()Z", (void *) gst_native_class_init}
 };

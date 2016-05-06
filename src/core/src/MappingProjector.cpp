@@ -342,19 +342,21 @@ void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
 	mBP->getFinalMap(mFinalBlendingMap);
 
 #ifdef USE_GPU
-	logMsg(LOG_INFO, "=== Start register reference map to GPU ===");
-	vector<unsigned char*> mapXArr;
-	vector<unsigned char*> mapYArr;
-	vector<unsigned char*> blendMapArr;
+	if (getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("KLT") == 0 || getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("FILE") == 0) {
+		logMsg(LOG_INFO, "=== Start register reference map to GPU ===");
+		vector<unsigned char*> mapXArr;
+		vector<unsigned char*> mapYArr;
+		vector<unsigned char*> blendMapArr;
 
-	for (int v=0; v<mViewCount; v++) {
-		mapXArr.push_back(mProjMapX[v].data);
-		mapYArr.push_back(mProjMapY[v].data);
-		blendMapArr.push_back(mFinalBlendingMap[v].data);
+		for (int v=0; v<mViewCount; v++) {
+			mapXArr.push_back(mProjMapX[v].data);
+			mapYArr.push_back(mProjMapY[v].data);
+			blendMapArr.push_back(mFinalBlendingMap[v].data);
+		}
+		registerRefMap(mapXArr, mapYArr, blendMapArr, mViewCount, mOW, mOH);
+
+		logMsg(LOG_INFO, "=== Finish registration ===");
 	}
-	registerRefMap(mapXArr, mapYArr, blendMapArr, mViewCount, mOW, mOH);
-
-	logMsg(LOG_INFO, "=== Finish registration ===");
 #endif
 }
 
