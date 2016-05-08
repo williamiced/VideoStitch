@@ -66,6 +66,8 @@ class MappingProjector {
 		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask);
 		void tuneToMap(Point2f& p);
 		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
+		float distOf(Point p1, Point p2);
+		float smoothstep(float edge0, float edge1, float x);
 		int rad2Deg(float r);
 		float deg2Rad(int d);
 		void loadSerialFile();

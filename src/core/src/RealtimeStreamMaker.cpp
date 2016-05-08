@@ -152,7 +152,7 @@ RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP
                                       "( appsrc name=mysrc ! videoconvert ! capsfilter ! x264enc tune=zerolatency ! rtph264pay name=pay0 pt=96 )");
                                       */
         gst_rtsp_media_factory_set_launch(mApp->factory,
-                                      "( appsrc name=mysrc ! videoconvert ! capsfilter ! x264enc tune=zerolatency ! rtph264pay name=pay0 pt=96 )");
+                                      "( appsrc name=mysrc ! videoconvert ! capsfilter ! avenc_mpeg4 ! rtpmp4vpay name=pay0 pt=96 )");
         gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(mApp->factory), TRUE);
 
         g_signal_connect(mApp->factory, "media-configure", G_CALLBACK (media_configure), NULL);

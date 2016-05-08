@@ -64,6 +64,10 @@ __global__ void runRenderSaliencyAreaCuda(int viewCount, int vW, int vH, int vCh
 		int frameElementCount = vW * vH * vChannels;
 
 		//outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
+		int oriR = *(out + curO3);
+		int oriG = *(out + curO3 + 1);
+		int oriB = *(out + curO3 + 2);
+
 		*(out + curO3) = 0;
 		*(out + curO3 + 1) = 0;
 		*(out + curO3 + 2) = 0;
@@ -88,6 +92,23 @@ __global__ void runRenderSaliencyAreaCuda(int viewCount, int vW, int vH, int vCh
 				*(out + curO3 + 2) = tmp > 255 ? 255 : tmp;
 			}
 		}
+
+		// Blending
+		int cCanvasX = (cX-0.5) * gridSize;
+		int cCanvasY = (cY-0.5) * gridSize;
+		float diffX = cCanvasX - x;
+		float diffY = cCanvasY - y;
+		float dist = sqrtf(diffX * diffX + diffY * diffY);
+		float xr = (dist - renderDiameter)/(0 - renderDiameter); 
+    	xr = xr > 1.0 ? 1.0 : xr;
+    	xr = xr < 0.0 ? 0.0 : xr;
+    	float blendRatio = xr*xr*(3 - 2*xr);
+    	tmp = (int)(blendRatio * *(out + curO3) + (1-blendRatio) * oriR);
+    	*(out + curO3) = tmp > 255 ? 255 : tmp;
+    	tmp = (int)(blendRatio * *(out + curO3 + 1) + (1-blendRatio) * oriG);
+    	*(out + curO3 + 1) = tmp > 255 ? 255 : tmp;
+    	tmp = (int)(blendRatio * *(out + curO3 + 2) + (1-blendRatio) * oriB);
+    	*(out + curO3 + 2) = tmp > 255 ? 255 : tmp;
 	}
 }
 

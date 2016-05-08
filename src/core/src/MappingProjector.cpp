@@ -418,8 +418,10 @@ void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat s
 		for (int x=0; x<w; x++) {
 			if (saliencyInfo.at<uchar>(y, x) == 0 || !isInDiameter(center, Point(x, y), w, gridSize, renderDiameter) ) 
 				continue;
+			Point centerOnCanvas = Point( static_cast<int>((center.x + 0.5)* gridSize), static_cast<int>((center.y + 0.5)* gridSize) );
 			for (int y0 = y*gridSize, counterY=0; counterY < gridSize; y0++, counterY++) {
 				for (int x0 = x*gridSize, counterX=0; counterX < gridSize; x0++, counterX++) {
+					Vec3b origin = outImg.at<Vec3b>(y0, x0);
 					outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
 					for (int v=0; v<mViewCount; v++) {
 						if (mProjMasks[v].at<uchar>(y0, x0) != 0) {
@@ -429,11 +431,28 @@ void MappingProjector::renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat s
 								outImg.at<Vec3b>(y0, x0) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y0, x0);
 						}
 					}			
+					float blendRatio = smoothstep((float)renderDiameter, 0, distOf(centerOnCanvas, Point(x0, y0)));
+					outImg.at<Vec3b>(y0, x0) = blendRatio * outImg.at<Vec3b>(y0, x0) + (1-blendRatio) * origin;
 				}
 			}
 		}
 	}
 #endif
+}
+
+float MappingProjector::distOf(Point p1, Point p2) {
+	int x = p1.x - p2.x;
+	int y = p1.y - p2.y;
+    return static_cast<float>(sqrt(x*x + y*y));
+}
+
+float MappingProjector::smoothstep(float edge0, float edge1, float x) {
+    // Scale, bias and saturate x to 0..1 range
+    x = (x - edge0)/(edge1 - edge0); 
+    x = x > 1.0 ? 1.0 : x;
+    x = x < 0.0 ? 0.0 : x;
+    // Evaluate polynomial
+    return x*x*(3 - 2*x);
 }
 
 void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {

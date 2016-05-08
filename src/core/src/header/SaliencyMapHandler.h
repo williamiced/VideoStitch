@@ -11,6 +11,7 @@
 #include <queue>
 #include <mutex>
 #include <atomic>
+#include <vector>
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc.hpp"
@@ -39,10 +40,16 @@ class SaliencyMapHandler {
 		unique_ptr<VideoVolumeAnalyzer> mVVA;
 		std::list<FeatureTracker*> mFeatureTrackers;
 		float mThreshKLT;
-		float* mFeatureCounter;
 		int mFW;
 		int mFH;
 		Mat mLastInfo;
+
+		// For temporal coherence
+		vector<Mat> mInfoVec;
+		vector<float> mGaussianWeights;
+		float* mFeatureCounter;
+		float mTemCohFactor1;
+		float mTemCohFactor2;
 
 		void analyzeInfo(Mat img, Mat& info);
 		bool isCleanup();

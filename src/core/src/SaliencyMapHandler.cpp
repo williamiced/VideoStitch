@@ -106,19 +106,40 @@ void SaliencyMapHandler::getSaliencyInfoFromTrackers(Mat& info) {
 
 	info = Mat::zeros(h, w, CV_8UC1);
 
-	memset(mFeatureCounter, 0, sizeof(float) * h*w);
 	float unit = 1.f / (mFeatureTrackers.size() + 1e-5); // Deal with divide-by-0 exception
+
+	Mat featureCountMat = Mat::zeros(h, w, CV_32FC1);
 
 	for(FeatureTracker* tracker : mFeatureTrackers) {
 		Point p = tracker->getLastPoint();
 		int x = p.x / mGridSize;
 		int y = p.y / mGridSize;
 
-		mFeatureCounter[y*w+x] += unit;
+		featureCountMat.at<float>(y, x) += unit;
 	}
 
-	for (int y=0; y<h; y++)
-		for (int x=0; x<w; x++)
+	if (mInfoVec.size() == TEMP_COH_QUEUE_SIZE)
+		mInfoVec.erase(mInfoVec.begin());
+	mInfoVec.push_back(featureCountMat.clone());
+
+	memset(mFeatureCounter, 0, sizeof(float) * h*w);
+
+	float normalizeTotal = 0.f;
+	for (unsigned int i=0; i<mInfoVec.size(); i++)
+		normalizeTotal += mGaussianWeights[i];
+	normalizeTotal = 1.f / normalizeTotal;
+
+	for (unsigned int i=0; i<mInfoVec.size(); i++) {
+		Mat pastInfo = mInfoVec[i];
+		for (int y=0; y<h; y++) {
+			for (int x=0; x<w; x++) {
+				mFeatureCounter[y*w+x] += pastInfo.at<float>(y, x) * mGaussianWeights[mInfoVec.size()-1 - i] * normalizeTotal;
+			}
+		}
+	}
+
+	for (int y=0; y<h; y++) 
+		for (int x=0; x<w; x++) 
 			info.at<uchar>(y, x) = mFeatureCounter[y*w+x] > mThreshKLT ? 255 : 0;
 
   	/// Apply the dilation operation
@@ -175,6 +196,15 @@ SaliencyMapHandler::SaliencyMapHandler() :
  	int h = mFH / mGridSize;
 	int w = mFW / mGridSize;
 	mFeatureCounter = new float[h*w];
+
+	mTemCohFactor1 = 1 / sqrt(2 * M_PI * TEMP_COH_SIGMA * TEMP_COH_SIGMA);
+	mTemCohFactor2 = 1 / (2 * TEMP_COH_SIGMA * TEMP_COH_SIGMA);
+
+	for (int i=0; i<TEMP_COH_QUEUE_SIZE; i++) {
+		mGaussianWeights.push_back(mTemCohFactor1 * exp((-1) * i * i * mTemCohFactor2));
+		printf("Weight: %f\n", mGaussianWeights[i]);
+	}
+
 	mVVA = unique_ptr<VideoVolumeAnalyzer>( new VideoVolumeAnalyzer() );
 }
 
@@ -183,6 +213,7 @@ SaliencyMapHandler::~SaliencyMapHandler() {
 		mSaliencyVideo->release();
 	if (mVVA != nullptr)
 		mVVA.release();
-	if (mFeatureCounter != nullptr)
+	if (mFeatureCounter != nullptr) {
 		delete mFeatureCounter;
+	}
 }

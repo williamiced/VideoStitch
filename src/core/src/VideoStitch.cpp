@@ -186,7 +186,10 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		if (f != 0)
 			mPA->addExecTime(stod(boostTimer.format(3, "%w")));
 
-		(*outputVideo) << targetCanvas;
+		//(*outputVideo) << targetCanvas;
+		static int frameCounter = 0;
+		imwrite(stringFormat("raw/pic_%d.png", frameCounter), targetCanvas);
+		frameCounter++;
 
 		if (f != 0)
 			mPA->increaseFrame();

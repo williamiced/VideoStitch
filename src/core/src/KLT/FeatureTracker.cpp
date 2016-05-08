@@ -26,7 +26,7 @@ void FeatureTracker::draw(Mat &canvas, Scalar& color)
         Point2d p = points[i-1];
         Point2d q = points[i];
 
-        circle( canvas, p, 2, color, -1, 8 );
+        circle( canvas, p, 10, color, -1, 8 );
         line( canvas, p, q, color, lineThickness/*, CV_AA, 0*/ );
     }
 }
