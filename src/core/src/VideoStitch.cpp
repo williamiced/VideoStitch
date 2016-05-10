@@ -126,6 +126,8 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		saliencyMode = 1;
 	else if (mUseSaliencyMapHandler.compare("KLT") == 0)
 		saliencyMode = 2;
+	else if (mUseSaliencyMapHandler.compare("ALL") == 0)
+		saliencyMode = 3;
 
 	for (int f=0; f<duration; f++) {
 		if (mVL->isCleanup())
@@ -133,7 +135,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		bool isHealthyFrame = true;
 
 		logMsg(LOG_INFO, stringFormat("\tProcess frame # %d", f ));
-		Mat targetCanvas;
+		Mat targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
 		Mat smallCanvas;
 		vector<Mat> frames;
 		for (int v=0; v<seqCount; v++) {
@@ -143,22 +145,24 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 				isHealthyFrame = false;
 				break;
 			}
-#ifdef USE_LENS_UNDISTORT	
-			mLP->undistort(frame);
-#endif
 			frames.push_back(frame);
 		}
 		if (!isHealthyFrame)
 			continue;
 		
+		boost::timer::cpu_timer boostTimer;
+
+#ifdef USE_LENS_UNDISTORT	
+		for (int v=0; v<seqCount; v++) 
+			mLP->undistort(frames[v]);
+#endif
+
 		if (mVSS->isSensorWorks()) {
 			if (saliencyMode > 0) 
 				mVSS->getFovealInfo(renderDiameter, renderCenter);
 			else
 				mVSS->getRenderArea(renderArea, renderMask);
 		}
-
-		boost::timer::cpu_timer boostTimer;
 
 		if ( saliencyMode > 0 ) {
 			mMP->renderSmallSizePano(smallCanvas, frames);
@@ -170,23 +174,30 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			} else if (saliencyMode == 2) { // Saliency Map from KLT
 				if ( !mSMH->calculateSaliencyFromKLT(smallCanvas, saliencyFrame) ) 
 					exitWithMsg(E_RUNTIME_ERROR, "Error when get saliency frame");
+			} else if (saliencyMode == 3) { // Baseline
+				int h = getIntConfig("FEATURE_CANVAS_HEIGHT") / getIntConfig("SALIENCY_GRID_SIZE");
+				int w = getIntConfig("FEATURE_CANVAS_WIDTH") / getIntConfig("SALIENCY_GRID_SIZE");
+
+				saliencyFrame = Mat::zeros(h, w, CV_8UC1);
+				for (int y=0; y<h; y++)
+					for (int x=0; x<w; x++)
+						saliencyFrame.at<uchar>(y, x) = 255;
 			}
 			//cv::resize(smallCanvas, targetCanvas, Size(mOW, mOH));
-			targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
-			mMP->renderSaliencyArea(targetCanvas, frames, saliencyFrame, renderDiameter, renderCenter);
+			//targetCanvas = Mat::zeros(mOH, mOW, CV_8UC3);
+			mMP->renderSaliencyArea(smallCanvas, targetCanvas, frames, saliencyFrame, renderDiameter, renderCenter);
 		} else { // No saliency 
 			mMP->renderPartialPano(targetCanvas, frames, renderArea, renderMask);
 		}
 		
-		if (mIsRealTimeStreaming) {
-			mRSM->streamOutFrame(targetCanvas);
-		} 
-
 		boostTimer.stop();
 		if (f != 0)
 			mPA->addExecTime(stod(boostTimer.format(3, "%w")));
 
-		//(*outputVideo) << targetCanvas;
+		if (mIsRealTimeStreaming) 
+			mRSM->streamOutFrame(targetCanvas);
+
+		(*outputVideo) << targetCanvas;
 		static int frameCounter = 0;
 		imwrite(stringFormat("raw/pic_%d.png", frameCounter), targetCanvas);
 		frameCounter++;

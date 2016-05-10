@@ -15,6 +15,7 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc.hpp"
+#include "opencv2/highgui.hpp"
 #include "KLT/VideoVolumeAnalyzer.h"
 
 using namespace cv;
@@ -45,6 +46,8 @@ class SaliencyMapHandler {
 		Mat mLastInfo;
 
 		// For temporal coherence
+		int mTempCohQueueSize;
+		float mTempCohSigma;
 		vector<Mat> mInfoVec;
 		vector<float> mGaussianWeights;
 		float* mFeatureCounter;

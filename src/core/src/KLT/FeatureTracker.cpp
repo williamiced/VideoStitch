@@ -3,10 +3,8 @@
 FeatureTracker::FeatureTracker(Point point) {
     //ctor
     points.push_back(point);
-    drawColor = Scalar(rand() % 256, rand() % 256, rand() % 256);
-    isBadFeature = false;
-    badFrameCount = 0;
-    virtualTraj.clear();
+    //drawColor = Scalar(rand() % 256, rand() % 256, rand() % 256);
+    drawColor = Scalar(0, 0, 255);
 }
 
 FeatureTracker::~FeatureTracker() {
@@ -17,17 +15,17 @@ void FeatureTracker::move(Point newPoint) {
     points.push_back(newPoint);
 }
 
-void FeatureTracker::draw(Mat &canvas, Scalar& color)
-{
+void FeatureTracker::draw(Mat &canvas, Scalar& color) {
     // Draw the trajectory of moving point
     int lineThickness = 1;
-    //int count = 0;
-    for ( size_t i = points.size()-1; i > 0; i-- ) {
-        Point2d p = points[i-1];
-        Point2d q = points[i];
 
-        circle( canvas, p, 10, color, -1, 8 );
-        line( canvas, p, q, color, lineThickness/*, CV_AA, 0*/ );
+    circle( canvas, points.back(), 2, color, -1, 8 );
+
+    for ( size_t i = 0; i < points.size() - 1; i++ ) {
+        Point2d p = points[i];
+        Point2d q = points[i+1];
+
+        line( canvas, p, q, Scalar(0, 0, 0), lineThickness);
     }
 }
 

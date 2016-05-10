@@ -55,6 +55,7 @@ class MappingProjector {
 		vector< vector<Mat> > mHs;
 		vector<Mat> mFinalBlendingMap;
 
+		void getBlendSalinecy(Mat& saliencyInfo, Mat& blendSaliencyInfo, int renderDiameter, Point center, int w, int h, int gridSize);
 		bool checkSeriailFileExist(string filename);
 		void setupWarpers();
 		void defineWindowSize();
@@ -77,7 +78,7 @@ class MappingProjector {
 		MappingProjector(int viewCount, Size viewSize);
 		void genExpoBlendingMap(vector<Mat> frames);
 		void renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask);
-		void renderSaliencyArea(Mat& outImg, vector<Mat> frames, Mat saliencyFrame, int renderDiameter, Point2f renderCenter);
+		void renderSaliencyArea(Mat& smallImg, Mat& outImg, vector<Mat> frames, Mat saliencyFrame, int renderDiameter, Point2f renderCenter);
 		void renderSmallSizePano(Mat& outImg, vector<Mat> frames);
 		bool isInDiameter(Point c, Point p, int w, int gridSize, int dSize);
 		void calcProjectionMatrix();

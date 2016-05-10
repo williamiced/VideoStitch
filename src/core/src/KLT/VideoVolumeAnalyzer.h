@@ -39,6 +39,7 @@ protected:
     void trackFeaturesICCV09();
 
 private:
+    int mFrameCounter;
     ForegroundDetector *fgDetector;
     Mat image, fgMask;
     Mat prevGray, currGray;

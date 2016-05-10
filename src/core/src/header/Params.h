@@ -8,9 +8,7 @@
 #define STRATEGY_OUTPUT OUTPUT_FULL_PANO
 #define RANSAC_REPROJ_THRES 3.0
 
-// For temporal coherence
-#define TEMP_COH_SIGMA 0.8409
-#define TEMP_COH_QUEUE_SIZE 1
-
+#define INNER_LAYER_RATIO_H 0.028
+#define TURN_BLEND_ON
 #define CARE_TIME
-//#define USE_GPU
+#define USE_GPU

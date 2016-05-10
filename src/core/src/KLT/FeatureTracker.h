@@ -18,18 +18,15 @@ public:
     /** Default destructor */
     virtual ~FeatureTracker();
 
-    Point getLastPoint() const
-    {
+    Point getLastPoint() const {
         return points.back();
     }
 
-    int length() const
-    {
+    int length() const {
         return points.size();
     }
 
-    void removeLastPoint() 
-    {
+    void removeLastPoint()  {
         points.pop_back();
     }
 
@@ -41,11 +38,6 @@ public:
     Scalar& getColor();
     void setLastFrameIndex(int index);
     int getLastFrameIndex();
-
-    bool isAlreadyDie;
-    bool isBadFeature;
-    int badFrameCount;
-    vector<Point2f> virtualTraj;
 
 protected:
 

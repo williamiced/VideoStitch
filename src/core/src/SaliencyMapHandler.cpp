@@ -79,8 +79,6 @@ bool SaliencyMapHandler::getSaliencyFrameFromVideo(Mat& frame) {
 }
 
 bool SaliencyMapHandler::calculateSaliencyFromKLT(Mat& frame, Mat& saliencyInfo) {
-	//SETUP_TIMER
-
 	Mat featureCanvas;
 	cv::resize(frame, featureCanvas, Size(mFW, mFH));
 	mVVA->process(featureCanvas);
@@ -106,7 +104,7 @@ void SaliencyMapHandler::getSaliencyInfoFromTrackers(Mat& info) {
 
 	info = Mat::zeros(h, w, CV_8UC1);
 
-	float unit = 1.f / (mFeatureTrackers.size() + 1e-5); // Deal with divide-by-0 exception
+	float unit = 1.f / (mGridSize * mGridSize);
 
 	Mat featureCountMat = Mat::zeros(h, w, CV_32FC1);
 
@@ -118,7 +116,7 @@ void SaliencyMapHandler::getSaliencyInfoFromTrackers(Mat& info) {
 		featureCountMat.at<float>(y, x) += unit;
 	}
 
-	if (mInfoVec.size() == TEMP_COH_QUEUE_SIZE)
+	if ((int)mInfoVec.size() == mTempCohQueueSize)
 		mInfoVec.erase(mInfoVec.begin());
 	mInfoVec.push_back(featureCountMat.clone());
 
@@ -140,7 +138,7 @@ void SaliencyMapHandler::getSaliencyInfoFromTrackers(Mat& info) {
 
 	for (int y=0; y<h; y++) 
 		for (int x=0; x<w; x++) 
-			info.at<uchar>(y, x) = mFeatureCounter[y*w+x] > mThreshKLT ? 255 : 0;
+			info.at<uchar>(y, x) = mFeatureCounter[y*w+x] >= mThreshKLT ? 255 : 0;
 
   	/// Apply the dilation operation
 	
@@ -191,19 +189,19 @@ SaliencyMapHandler::SaliencyMapHandler() :
 	mGridSize(getIntConfig("SALIENCY_GRID_SIZE")),
  	mThreshKLT(getFloatConfig("EPSILON_F_KLT")),
  	mFW(getIntConfig("FEATURE_CANVAS_WIDTH")),
- 	mFH(getIntConfig("FEATURE_CANVAS_HEIGHT")) {
+ 	mFH(getIntConfig("FEATURE_CANVAS_HEIGHT")),
+ 	mTempCohQueueSize(getIntConfig("TEMP_COH_QUEUE_SIZE")),
+	mTempCohSigma(getFloatConfig("TEMP_COH_SIGMA")) {
 
  	int h = mFH / mGridSize;
 	int w = mFW / mGridSize;
 	mFeatureCounter = new float[h*w];
 
-	mTemCohFactor1 = 1 / sqrt(2 * M_PI * TEMP_COH_SIGMA * TEMP_COH_SIGMA);
-	mTemCohFactor2 = 1 / (2 * TEMP_COH_SIGMA * TEMP_COH_SIGMA);
+	mTemCohFactor1 = 1 / sqrt(2 * M_PI * mTempCohSigma * mTempCohSigma);
+	mTemCohFactor2 = 1 / (2 * mTempCohSigma * mTempCohSigma);
 
-	for (int i=0; i<TEMP_COH_QUEUE_SIZE; i++) {
+	for (int i=0; i<mTempCohQueueSize; i++) 
 		mGaussianWeights.push_back(mTemCohFactor1 * exp((-1) * i * i * mTemCohFactor2));
-		printf("Weight: %f\n", mGaussianWeights[i]);
-	}
 
 	mVVA = unique_ptr<VideoVolumeAnalyzer>( new VideoVolumeAnalyzer() );
 }
