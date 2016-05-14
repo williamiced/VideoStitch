@@ -43,7 +43,10 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	}
 
 	logMsg(LOG_INFO, "=== Initialize Sensor Server ===");
-	mVSS = shared_ptr<SensorServer>( new SensorServer() );
+	if (mIsRealTimeStreaming)
+		mVSS = shared_ptr<SensorServer>( new SensorServer() );
+	else
+		mVSS = shared_ptr<SensorServer>( new SensorServer(getCmdOption(argv, argv + argc, "--sensorData")) );
 	logMsg(LOG_INFO, "=== Sensor Server is constructed ===");
 
 	logMsg(LOG_INFO, "=== Initialize Video Stablizer ===");
@@ -95,6 +98,10 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 			logMsg(LOG_INFO, "=== Initialize Real-time Stream Maker ===");
 			mRSM = shared_ptr<RealtimeStreamMaker>( new RealtimeStreamMaker(argc, argv, mVSS->getClientIP()) );
 		}
+	} else {
+		while ( !mVSS->isSensorWorks() );
+
+		logMsg(LOG_INFO, "=== Sensor Data Loaded ===");
 	}
 }
 
@@ -156,7 +163,6 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		for (int v=0; v<seqCount; v++) 
 			mLP->undistort(frames[v]);
 #endif
-
 		if (mVSS->isSensorWorks()) {
 			if (saliencyMode > 0) 
 				mVSS->getFovealInfo(renderDiameter, renderCenter);
@@ -178,7 +184,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 				int h = getIntConfig("FEATURE_CANVAS_HEIGHT") / getIntConfig("SALIENCY_GRID_SIZE");
 				int w = getIntConfig("FEATURE_CANVAS_WIDTH") / getIntConfig("SALIENCY_GRID_SIZE");
 
-				saliencyFrame = Mat::zeros(h, w, CV_8UC1);
+				saliencyFrame = Mat::zeros(h, w, CV_8UC1);	
 				for (int y=0; y<h; y++)
 					for (int x=0; x<w; x++)
 						saliencyFrame.at<uchar>(y, x) = 255;
@@ -199,12 +205,18 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 
 		(*outputVideo) << targetCanvas;
 		static int frameCounter = 0;
-		imwrite(stringFormat("raw/pic_%d.png", frameCounter), targetCanvas);
+		//imwrite(stringFormat("raw/pic_%d.png", frameCounter), targetCanvas);
 		frameCounter++;
 
 		if (f != 0)
 			mPA->increaseFrame();
 	}
-	mPA->checkFPS();
+	float FPS = mPA->checkFPS();
 	logMsg(LOG_INFO, "=== Done stitching ===");
+
+	FILE* fp = fopen("ResultLog.txt", "a+");
+	fprintf(fp, stringFormat("FPS: %f Data: (%s) Output Size (%d,%d) Epsilon (%f) TurnBlendOn (%d) USE_SALIENCY_MAP_HANDLER (%s) SALIENCY_GRID_SIZE (%d) Config (%s) SensorData (%s)\n", 
+			FPS, getCmdOption(argv, argv + argc, "--input"), getIntConfig("OUTPUT_PANO_WIDTH"), getIntConfig("OUTPUT_PANO_HEIGHT"), getFloatConfig("EPSILON_F_KLT"), getIntConfig("TURN_BLEND_ON"), 
+			getStringConfig("USE_SALIENCY_MAP_HANDLER").c_str(), getIntConfig("SALIENCY_GRID_SIZE"), getCmdOption(argv, argv + argc, "--config"), getCmdOption(argv, argv + argc, "--sensorData")   ).c_str() );
+	fclose(fp);
 }

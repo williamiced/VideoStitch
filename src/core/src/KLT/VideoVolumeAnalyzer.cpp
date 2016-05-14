@@ -26,7 +26,18 @@ VideoVolumeAnalyzer::~VideoVolumeAnalyzer() {
     }
 }
 
+void VideoVolumeAnalyzer::deleteTrackers() {
+    list<FeatureTracker*>::iterator iter;
+    for ( iter = deadTrackers.begin(); iter != deadTrackers.end(); iter++ ) {
+        delete *iter;
+        *iter = NULL;
+    }
+    deadTrackers.clear();   
+}
+
 void VideoVolumeAnalyzer::trackFeatures(Rect &boundary) {
+    deleteTrackers();
+
     if (activeTrackers.size() > 0) {
         vector<Point2f> points;
         vector<Point2f> matchedPoints, backMatchPoints;

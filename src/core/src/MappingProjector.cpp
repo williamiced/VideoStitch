@@ -194,9 +194,6 @@ void MappingProjector::refineCheckupTableByFeaturesMatching() {
 		int idx1 = mMatchInfos[i].idx1;
 		int idx2 = mMatchInfos[i].idx2;
 
-		//if ( !( (idx1 == 0 && idx2 == 5) || (idx1 == 5 && idx2 == 0) ))
-		//	continue;
-
 		vector<Point2d> matchesInIdx1;
 		vector<Point2d> matchesInIdx2;
 
@@ -231,18 +228,6 @@ void MappingProjector::refineCheckupTableByFeaturesMatching() {
 		cout << stringFormat("view: %d->%d, matches: %d", idx1, idx2, matches.size()) << endl;
 		
 		mHs[idx1].push_back(H);
-		/*
-		Mat tmpMap;
-		mProjMapX[idx1].convertTo(tmpMap, CV_32F);
-		cv::warpPerspective(tmpMap, tmpMap, H, mProjMapX[idx1].size());
-		tmpMap.convertTo(mProjMapX[idx1], CV_8U);
-
-		Mat tmpMap2;
-		mProjMapY[idx1].convertTo(tmpMap2, CV_32F);
-		cv::warpPerspective(tmpMap2, tmpMap2, H, mProjMapY[idx1].size());
-		tmpMap2.convertTo(mProjMapY[idx1], CV_8U);
-		*/
-		// Can have some issues here, not sure
 	}
 }
 
@@ -313,7 +298,9 @@ MappingProjector::MappingProjector(int viewCount, Size viewSize) :
 	mOH(getIntConfig("OUTPUT_PANO_HEIGHT")),
 	mUseSerializableResult(getIntConfig("USING_SERIALIZABLE_RESULT") == 1),
 	mViewCount(viewCount),
-	mViewSize(viewSize) {
+	mViewSize(viewSize),
+	mUseGPU(getIntConfig("USE_GPU") == 1),
+	mTurnBlendOn(getIntConfig("TURN_BLEND_ON") == 1) {
 		initialData();
 }
 
@@ -341,26 +328,28 @@ void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
 	mBP->genFinalMap(mEP->gains());
 	mBP->getFinalMap(mFinalBlendingMap);
 
-#ifdef USE_GPU
-	if (getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("KLT") == 0 || getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("FILE") == 0 || getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("ALL") == 0) {
-		logMsg(LOG_INFO, "=== Start register reference map to GPU ===");
-		vector<unsigned char*> mapXArr;
-		vector<unsigned char*> mapYArr;
-		vector<unsigned char*> blendMapArr;
+	if (mUseGPU) {
+		if (getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("KLT") == 0 || getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("FILE") == 0 || getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("ALL") == 0) {
+			logMsg(LOG_INFO, "=== Start register reference map to GPU ===");
+			vector<unsigned char*> mapXArr;
+			vector<unsigned char*> mapYArr;
+			vector<unsigned char*> blendMapArr;
 
-		for (int v=0; v<mViewCount; v++) {
-			mapXArr.push_back(mProjMapX[v].data);
-			mapYArr.push_back(mProjMapY[v].data);
-			blendMapArr.push_back(mFinalBlendingMap[v].data);
+			for (int v=0; v<mViewCount; v++) {
+				mapXArr.push_back(mProjMapX[v].data);
+				mapYArr.push_back(mProjMapY[v].data);
+				blendMapArr.push_back(mFinalBlendingMap[v].data);
+			}
+			registerRefMap(mapXArr, mapYArr, blendMapArr, mViewCount, mOW, mOH);
+
+			logMsg(LOG_INFO, "=== Finish registration ===");
 		}
-		registerRefMap(mapXArr, mapYArr, blendMapArr, mViewCount, mOW, mOH);
-
-		logMsg(LOG_INFO, "=== Finish registration ===");
 	}
-#endif
 }
 
 void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask) {
+	SETUP_TIMER
+
 	outImg = Mat::zeros(mOH, mOW, CV_8UC3);
 	int y1 = renderArea.tl().y;
 	int y2 = renderArea.tl().y + renderArea.size().height;
@@ -370,25 +359,27 @@ void MappingProjector::renderPartialPano(Mat& outImg, vector<Mat> frames, Rect r
 	if ( mEP->needFeed() ) 
 		genExpoBlendingMap(frames);
 
-	#pragma omp parallel for collapse(2) 
+	//#pragma omp parallel for collapse(2) 
 	for (int y=y1; y<y2; y++) {
 		for (int x=x1; x<x2; x++) {
 			for (int v=0; v<mViewCount; v++) {
 				if (mProjMasks[v].at<uchar>(y, x) != 0) {
 					int px = mProjMapX[v].at<int>(y, x);
 					int py = mProjMapY[v].at<int>(y, x);
-					if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
-						outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y, x);
+					outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y, x);
 				}
 			}
 		}
 	}
 }
 
-bool MappingProjector::isInDiameter(Point c, Point p, int w, int gridSize, int dSize) {
+bool MappingProjector::isInDiameter(Point c, Point p, int w, int h, int gridSize, int dSize) {
 	int x = abs(c.x - p.x);
 	x = x < w/2 ? x : w-x;
 	int y = (c.y - p.y);
+
+	float rad = cos((M_PI/2.f) * fabs(p.y - h/2.f) / (h/2.f));
+	x = (int) (x * rad);
 
 	return (sqrt(x*x+y*y) * gridSize) < dSize;
 }
@@ -399,11 +390,17 @@ void MappingProjector::getBlendSalinecy(Mat& saliencyInfo, Mat& blendSaliencyInf
 
 	for (int y=0; y<h; y++)
 		for (int x=0; x<w; x++)
-			if (isInDiameter(center, Point(x, y), w, gridSize, renderDiameter))
+			if (isInDiameter(center, Point(x, y), w, h, gridSize, renderDiameter))
 				saliencyInfo.at<uchar>(y, x) = 255;
 	saliencyInfo.convertTo(blendSaliencyInfo, CV_32FC1);
 	GaussianBlur(blendSaliencyInfo, blendSaliencyInfo, Size(3, 3), 0, 0);
 	blendSaliencyInfo.convertTo(blendSaliencyInfo, CV_8UC1);
+
+	/*
+	static int cc = 0;
+	imwrite(stringFormat("window/test_%d.png", cc), blendSaliencyInfo);
+	cc++;
+	*/
 }
 
 void MappingProjector::renderSaliencyArea(Mat& smallImg, Mat& outImg, vector<Mat> frames, Mat saliencyInfo, int renderDiameter, Point2f renderCenter) {
@@ -420,44 +417,44 @@ void MappingProjector::renderSaliencyArea(Mat& smallImg, Mat& outImg, vector<Mat
 	// Scale the center to match salinecy map
 	Point center = Point(static_cast<int>(renderCenter.x * w), static_cast<int>(renderCenter.y * h) );
 
-	renderDiameter = 400;
-
 	Mat blendSaliencyInfo;
 	getBlendSalinecy(saliencyInfo, blendSaliencyInfo, renderDiameter, center, w, h, gridSize);
 	
-#ifdef USE_GPU
-	renderSaliencyAreaCuda(mViewCount, frames[0].cols, frames[0].rows, frames[0].channels(), w, h, gridSize, renderDiameter, center.x, center.y, mOW, mOH, smallImg.channels(), 
-		blendSaliencyInfo.data, outImg.data, mDW, mDH);
-#else
-	cv::resize(blendSaliencyInfo, blendSaliencyInfo, Size(mOW, mOH));
-	cv::resize(smallImg, outImg, Size(mOW, mOH));
+	if (mUseGPU) {
+		renderSaliencyAreaCuda(mViewCount, frames[0].cols, frames[0].rows, frames[0].channels(), w, h, gridSize, renderDiameter, center.x, center.y, mOW, mOH, smallImg.channels(), 
+			blendSaliencyInfo.data, outImg.data, mDW, mDH);
+	} else {
+		cv::resize(blendSaliencyInfo, blendSaliencyInfo, Size(mOW, mOH));
+		cv::resize(smallImg, outImg, Size(mOW, mOH));
 
-	#pragma omp parallel for collapse(2) 
-	for (int y=0 ;y<h; y++) {
-		for (int x=0; x<w; x++) {
-			if (saliencyInfo.at<uchar>(y, x) == 0) 
-				continue;
-			for (int y0 = y*gridSize, counterY=0; counterY < gridSize; y0++, counterY++) {
-				for (int x0 = x*gridSize, counterX=0; counterX < gridSize; x0++, counterX++) {
-					Vec3b origin = outImg.at<Vec3b>(y0, x0);
-					outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
-					for (int v=0; v<mViewCount; v++) {
-						if (mProjMasks[v].at<uchar>(y0, x0) != 0) {
-							int px = mProjMapX[v].at<int>(y0, x0);
-							int py = mProjMapY[v].at<int>(y0, x0);
-							if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) )
+		//#pragma omp parallel for collapse(2) 
+		for (int y=0 ;y<h; y++) {
+			for (int x=0; x<w; x++) {
+				if (saliencyInfo.at<uchar>(y, x) == 0) 
+					continue;
+				for (int y0 = y*gridSize, counterY=0; counterY < gridSize; y0++, counterY++) {
+					for (int x0 = x*gridSize, counterX=0; counterX < gridSize; x0++, counterX++) {
+						Vec3b origin = outImg.at<Vec3b>(y0, x0);
+						outImg.at<Vec3b>(y0, x0) = Vec3b(0, 0, 0);
+						for (int v=0; v<mViewCount; v++) {
+							if (mProjMasks[v].at<uchar>(y0, x0) != 0) {
+								int px = mProjMapX[v].at<int>(y0, x0);
+								int py = mProjMapY[v].at<int>(y0, x0);
 								outImg.at<Vec3b>(y0, x0) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(y0, x0);
+							}
+						}		
+						if (mTurnBlendOn) {
+							uchar saliencyVal = blendSaliencyInfo.at<uchar>(y0, x0);
+							if (saliencyVal > BLEND_THRESHOLD)
+								continue;
+							float blendRatio = saliencyVal / 255.f;
+							outImg.at<Vec3b>(y0, x0) = blendRatio * outImg.at<Vec3b>(y0, x0) + (1-blendRatio) * origin;
 						}
-					}			
-#ifdef TURN_BLEND_ON
-					float blendRatio = blendSaliencyInfo.at<uchar>(y0, x0) / 255.f;
-					outImg.at<Vec3b>(y0, x0) = blendRatio * outImg.at<Vec3b>(y0, x0) + (1-blendRatio) * origin;
-#endif
+					}
 				}
 			}
 		}
 	}
-#endif
 }
 
 float MappingProjector::distOf(Point p1, Point p2) {
@@ -483,37 +480,37 @@ void MappingProjector::renderSmallSizePano(Mat& outImg, vector<Mat> frames) {
 	if ( mEP->needFeed() )
 		genExpoBlendingMap(frames);
 
-#ifdef USE_GPU
-	vector<unsigned char*> framesArr;
-	for (int v=0; v<mViewCount; v++)
-		framesArr.push_back(frames[v].data);
+	if (mUseGPU) {
+		vector<unsigned char*> framesArr;
+		for (int v=0; v<mViewCount; v++)
+			framesArr.push_back(frames[v].data);
 
-	copyFrames(framesArr, mViewCount, frames[0].channels(), frames[0].cols, frames[0].rows);
-	renderSmallSizePanoCuda(mViewCount, frames[0].cols, frames[0].rows, frames[0].channels(), outImg.cols, outImg.rows, outImg.channels(), mOW, mOH, outImg.data);
-#else
-	float ratioX = (float) mOW / mDW;
-	float ratioY = (float) mOH / mDH;
+		copyFrames(framesArr, mViewCount, frames[0].channels(), frames[0].cols, frames[0].rows);
+		renderSmallSizePanoCuda(mViewCount, frames[0].cols, frames[0].rows, frames[0].channels(), outImg.cols, outImg.rows, outImg.channels(), mOW, mOH, outImg.data);
+	} else {
+		float ratioX = (float) mOW / mDW;
+		float ratioY = (float) mOH / mDH;
 
-	#pragma omp parallel for collapse(2) 
-	for (int y=0; y<mDH; y++) {
-		for (int x=0; x<mDW; x++) {
-			int oriY = (int) (y * ratioY);
-			int oriX = (int) (x * ratioX);
+		//#pragma omp parallel for collapse(2) 
+		for (int y=0; y<mDH; y++) {
+			for (int x=0; x<mDW; x++) {
+				int oriY = (int) (y * ratioY);
+				int oriX = (int) (x * ratioX);
 
-			for (int v=0; v<mViewCount; v++) {
-				if (mProjMasks[v].at<uchar>(oriY, oriX) != 0) {
-					int px = mProjMapX[v].at<int>(oriY, oriX);
-					int py = mProjMapY[v].at<int>(oriY, oriX);
+				for (int v=0; v<mViewCount; v++) {
+					if (mProjMasks[v].at<uchar>(oriY, oriX) != 0) {
+						int px = mProjMapX[v].at<int>(oriY, oriX);
+						int py = mProjMapY[v].at<int>(oriY, oriX);
 
-					if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) ) {
-						outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(oriY, oriX);
+						if ( !(py < 0 || px < 0 || px >= mViewSize.width || py >= mViewSize.height) ) {
+							outImg.at<Vec3b>(y, x) += frames[v].at<Vec3b>(py, px) * mFinalBlendingMap[v].at<float>(oriY, oriX);
+						}
 					}
+					
 				}
-				
 			}
 		}
 	}
-#endif
 }
 
 

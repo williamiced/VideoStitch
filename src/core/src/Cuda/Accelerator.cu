@@ -103,16 +103,17 @@ __global__ void runRenderSaliencyAreaCuda(int viewCount, int vW, int vH, int vCh
 				*(out + curO3 + 2) = tmp > 255 ? 255 : tmp;
 			}
 		}
-#ifdef TURN_BLEND_ON
-		float blendRatio = sVal / 255.f;
-		// Blending
-    	tmp = (int)(blendRatio * *(out + curO3) + (1-blendRatio) * oriR);
-    	*(out + curO3) = tmp > 255 ? 255 : tmp;
-    	tmp = (int)(blendRatio * *(out + curO3 + 1) + (1-blendRatio) * oriG);
-    	*(out + curO3 + 1) = tmp > 255 ? 255 : tmp;
-    	tmp = (int)(blendRatio * *(out + curO3 + 2) + (1-blendRatio) * oriB);
-    	*(out + curO3 + 2) = tmp > 255 ? 255 : tmp;
-#endif
+
+		if (sVal <= BLEND_THRESHOLD) {
+			float blendRatio = sVal / 255.f;
+			// Blending
+	    	tmp = (int)(blendRatio * *(out + curO3) + (1-blendRatio) * oriR);
+	    	*(out + curO3) = tmp > 255 ? 255 : tmp;
+	    	tmp = (int)(blendRatio * *(out + curO3 + 1) + (1-blendRatio) * oriG);
+	    	*(out + curO3 + 1) = tmp > 255 ? 255 : tmp;
+	    	tmp = (int)(blendRatio * *(out + curO3 + 2) + (1-blendRatio) * oriB);
+	    	*(out + curO3 + 2) = tmp > 255 ? 255 : tmp;
+	    }
 	}
 }
 
@@ -151,7 +152,7 @@ __global__ void runRenderSmallSizePanoCuda(int viewCount, int vW, int vH, int vC
 				tmp = *(out + curD3 + 2) + *(frames + frameElementCount * v + pOffset + 2) * *(b + elementCount * v + curO + 2);
 				*(out + curD3 + 2) = tmp > 255 ? 255 : tmp;
 			}
-		}
+		}		
 	}
 }
 

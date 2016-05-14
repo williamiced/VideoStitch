@@ -43,6 +43,8 @@ private:
     ForegroundDetector *fgDetector;
     Mat image, fgMask;
     Mat prevGray, currGray;
+
+    void deleteTrackers();
 };
 
 #endif // VIDEOVOLUMEANALYZER_H

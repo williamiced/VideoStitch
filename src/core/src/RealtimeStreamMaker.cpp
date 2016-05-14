@@ -35,6 +35,7 @@ gboolean RealtimeStreamMaker::read_data(MyApp* app) {
         app->timestamp             += GST_BUFFER_DURATION(buffer);
 
         g_signal_emit_by_name(app->appsrc, "push-buffer", buffer, &ret);
+        g_signal_emit_by_name(app->appsrc, "push-buffer", buffer, &ret);
         gst_buffer_unref(buffer);
 
         g_timer_start(app->timer);

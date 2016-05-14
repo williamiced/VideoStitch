@@ -13,7 +13,7 @@ class PerformanceAnalyzer {
 	public:
 		void increaseFrame();
 		void addExecTime(double time);
-		void checkFPS();
+		float checkFPS();
 
 		PerformanceAnalyzer();
 		~PerformanceAnalyzer();

@@ -11,6 +11,8 @@ float getFloatConfig(string name) {
 }
 
 string getStringConfig(string name) {
+    if (CONFIG.find(name) == CONFIG.end())
+        return "";
     return CONFIG[name];
 }
 

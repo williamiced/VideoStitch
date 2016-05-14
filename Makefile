@@ -16,14 +16,17 @@ LDFLAGS+=-lboost_system -lboost_timer -lgomp -lglut -lGL -lGLEW -lGLU -lboost_se
 # Paths
 SRC=src/core/src
 OBJ=obj
+DATA=data/Cut15
+EXP=data/modexp
 SRC_FILES = $(wildcard $(SRC)/*.cpp)
 CUDA_FILES = $(wildcard $(SRC)/Cuda/*.cu)
 KLT_FILES = $(wildcard $(SRC)/KLT/*.cpp)
+CONFIG_FILES = $(wildcard $(DATA)/*.config)
+RECORD_FILES = $(wildcard $(EXP)/*/*.txt)
 DEPD = $(wildcard $(SRC)/header/.h)
 BIN=bin
 TMP=tmp
 #DATA=/media/wlee/新增磁碟區/ubuntu/Cut15
-DATA=data/Cut15
 INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -I$(SRC) -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
 
 # All files
@@ -68,6 +71,17 @@ VideoStitch: $(OBJ_FILES) $(OBJ_KLT_FILES) $(OBJ_CUDA_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
 	$(CC) $? $(CFLAGS) -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS) $(LDFLAGS)
 
+calcFPS:
+	@for CONFIG in $(CONFIG_FILES); do \
+		for RECORD in Record1.txt Record2.txt Record3.txt Record4.txt Record5.txt Record6.txt Record7.txt Record8.txt Record9.txt Record10.txt ; do \
+			TMP=$${CONFIG##*/}; \
+			TMP2=$${RECORD##*/}; \
+			sh scripts/calcFPS.sh $$TMP $$TMP2; \
+		done \
+	done
+	
+
+
 SaliencyMapExtractor:
 	$(CC) $(CFLAGS) $? -I. tools/SaliencyMapExtractor/SaliencyMapExtractor.cpp -o $(BIN)/$@ $(LDFLAGS)
 
@@ -98,12 +112,34 @@ ImagesDumper:
 	@echo "$(cccyan)[Ganerate images dumper]$(ccend)"
 	$(CC) -I$(SRC) obj/Usage.o -o $(BIN)/$@ tools/imagesDumper/ImagesDumper.cpp $(LDFLAGS)
 
+blendTest:
+	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ori.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
+	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ori_960.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
+	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ours_1.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
+	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ours_2.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
+	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ours_3.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
+
+birthday:
+	for RECORD in $(RECORD_FILES); do \
+		for CONFIG in $(CONFIG_FILES); do \
+			echo "bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 150 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config $$CONFIG --sensorData $$RECORD"; \
+			bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 150 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config $$CONFIG --sensorData $$RECORD; \
+		done \
+	done
+
+	for RECORD in $(RECORD_FILES); do \
+		for CONFIG in $(CONFIG_FILES); do \
+			echo "bin/VideoStitch --input data/Cut17/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config $$CONFIG --sensorData $$RECORD"; \
+			bin/VideoStitch --input data/Cut17/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config $$CONFIG --sensorData $$RECORD; \
+		done \
+	done
+
 run:
 	@mkdir -p $(TMP)
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/2016-05-04/test01/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
-	$(BIN)/VideoStitch --input $(DATA)/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 1000 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
+	$(BIN)/VideoStitch --input $(DATA)/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/../my.config --sensorData $(DATA)/../modexp/若曦/Record1.txt
 
 runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi

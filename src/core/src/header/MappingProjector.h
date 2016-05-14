@@ -43,6 +43,8 @@ class MappingProjector {
 		int mViewCount;
 		Size mViewSize;
 		Size mOutputWindowSize;
+		bool mUseGPU;
+		bool mTurnBlendOn;
 
 		vector< shared_ptr<PROJECT_METHOD> > mSphericalWarpers;
 		vector< Mat > mR;
@@ -80,7 +82,7 @@ class MappingProjector {
 		void renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask);
 		void renderSaliencyArea(Mat& smallImg, Mat& outImg, vector<Mat> frames, Mat saliencyFrame, int renderDiameter, Point2f renderCenter);
 		void renderSmallSizePano(Mat& outImg, vector<Mat> frames);
-		bool isInDiameter(Point c, Point p, int w, int gridSize, int dSize);
+		bool isInDiameter(Point c, Point p, int w, int h, int gridSize, int dSize);
 		void calcProjectionMatrix();
 		Size getOutputVideoSize();
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);

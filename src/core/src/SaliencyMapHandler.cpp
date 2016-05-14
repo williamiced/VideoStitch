@@ -79,6 +79,7 @@ bool SaliencyMapHandler::getSaliencyFrameFromVideo(Mat& frame) {
 }
 
 bool SaliencyMapHandler::calculateSaliencyFromKLT(Mat& frame, Mat& saliencyInfo) {
+	SETUP_TIMER
 	Mat featureCanvas;
 	cv::resize(frame, featureCanvas, Size(mFW, mFH));
 	mVVA->process(featureCanvas);

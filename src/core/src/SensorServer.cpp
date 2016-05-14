@@ -1,7 +1,34 @@
 #include <header/SensorServer.h>
 
 SensorServer::SensorServer() : mOrientation(new float[3]), mIsSensorWorks(false), mW(getIntConfig("OUTPUT_PANO_WIDTH")), mH(getIntConfig("OUTPUT_PANO_HEIGHT")), mFovealDiameter(-1) {
+    mIsRealTimeStreaming = true;
     mServerThread = thread(&SensorServer::makeConnection, this);
+}
+
+SensorServer::SensorServer(string fileName) : mOrientation(new float[3]), mIsSensorWorks(false), mW(getIntConfig("OUTPUT_PANO_WIDTH")), mH(getIntConfig("OUTPUT_PANO_HEIGHT")), mFovealDiameter(-1) {
+    mIsRealTimeStreaming = false;
+    mServerThread = thread(&SensorServer::loadFromFile, this, fileName);
+}
+
+void SensorServer::loadFromFile(string fileName) {
+    logMsg(LOG_DEBUG, "=== Load sensor data from file ===", 3);
+
+    ifstream inputFile(fileName);
+
+    string record;
+    while (getline(inputFile, record)) {
+        vector<float> floatRec;
+        vector<string> tokens;
+        split(tokens, record, is_any_of(" "));
+
+        for (unsigned int i=0; i<tokens.size(); i++)
+            floatRec.push_back(stof(tokens[i].c_str()));
+        mSensorDataVec.push_back(floatRec);
+    }
+    mSensorIter = mSensorDataVec.begin();
+    mIsSensorWorks = true;
+
+    logMsg(LOG_DEBUG, "=== Load sensor data done ===", 3);
 }
 
 void SensorServer::makeConnection() {
@@ -70,36 +97,8 @@ void SensorServer::parseSensorInfo(char* buf) {
 }
 
 void SensorServer::getRenderArea(Rect& area, Mat& mask) {
-    float centerU = (mOrientation[0] + M_PI) / (2 * M_PI);
-    float centerV = (M_PI - fabs(mOrientation[2]) ) / M_PI;
-    float uOffset = (55.f / 360.f);
-    float vOffset = (55.f / 180.f);
-
     float u0, u1, v0, v1;
     
-    /*
-    if (mIsSensorWorks) {
-        u0 = centerU - uOffset;
-        u1 = centerU + uOffset;
-        v0 = centerV - vOffset;
-        v1 = centerV + vOffset;
-
-        if (u0 < 0 || u1 > 1) {
-            u0 = 0.f;
-            u1 = 1.f;
-        } 
-        if (v0 < 0 || v1 > 1) {
-            v0 = 0.f;
-            v1 = 1.f;
-        }
-    } else {
-        // debug
-        u0 = 0.f;
-        u1 = 1.f;
-        v0 = 0.f;
-        v1 = 1.f;    
-    }
-    */
     u0 = 0.f;
     u1 = 1.f;
     v0 = 0.f;
@@ -110,13 +109,19 @@ void SensorServer::getRenderArea(Rect& area, Mat& mask) {
 }
 
 void SensorServer::getFovealInfo(int& renderDiameter, Point2f& renderCenter) {
+    if (!mIsRealTimeStreaming) {
+        mOrientation[0] = (*mSensorIter)[0];
+        mOrientation[1] = (*mSensorIter)[1];
+        mOrientation[2] = (*mSensorIter)[2];
+        mSensorIter++;
+    }
     // 4320: 1200
     // 2160: 600
     // 1440: 400
     if (mFovealDiameter < 0) {
         float pixelDensity = (getIntConfig("OUTPUT_PANO_WIDTH") / 3.6f)  / 138.5f;     // px/mm
         float userDist = 100.f;                // mm
-        float worstLatency = 150.f;             // ms
+        float worstLatency = 100.f;             // ms
         float maxSaccadicSpeed = (0.2f / 180.f) * M_PI;
         float subtendedAngle = (5.f / 180.f) * M_PI;
         float blendingBorder = 10.f;            
