@@ -10,7 +10,6 @@
 #include "FeatureTracker.h"
 #include "ForegroundDetector.h"
 
-using namespace cv;
 using std::vector;
 using std::list;
 using namespace cv::xfeatures2d;
@@ -25,24 +24,24 @@ public:
     virtual ~VideoVolumeAnalyzer();
 
     /// process an incoming frame
-    void process(Mat &frame);
+    void process(cv::Mat &frame);
 
     void draw();
 
     list<FeatureTracker*> getActiveTrackers();
-    Mat& getImage();
+    cv::Mat& getImage();
 
 protected:
     list<FeatureTracker*> activeTrackers;
     list<FeatureTracker*> deadTrackers;
-    void trackFeatures(Rect& boundary);
+    void trackFeatures(cv::Rect& boundary);
     void trackFeaturesICCV09();
 
 private:
     int mFrameCounter;
     ForegroundDetector *fgDetector;
-    Mat image, fgMask;
-    Mat prevGray, currGray;
+    cv::Mat image, fgMask;
+    cv::Mat prevGray, currGray;
 
     void deleteTrackers();
 };

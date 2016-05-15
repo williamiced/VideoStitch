@@ -1,5 +1,7 @@
 #include <header/SensorServer.h>
 
+using namespace cv;
+
 SensorServer::SensorServer() : mOrientation(new float[3]), mIsSensorWorks(false), mW(getIntConfig("OUTPUT_PANO_WIDTH")), mH(getIntConfig("OUTPUT_PANO_HEIGHT")), mFovealDiameter(-1) {
     mIsRealTimeStreaming = true;
     mServerThread = thread(&SensorServer::makeConnection, this);

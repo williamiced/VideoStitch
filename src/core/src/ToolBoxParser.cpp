@@ -1,5 +1,7 @@
 #include <header/ToolBoxParser.h>
 
+using namespace cv;
+
 // Intrinsic parameters
 vector< float > ToolBoxParser::mX; // xi
 vector< Point2f > ToolBoxParser::mF; // Focal length

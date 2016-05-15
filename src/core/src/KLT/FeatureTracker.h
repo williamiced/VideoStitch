@@ -6,19 +6,18 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
-using namespace cv;
 using std::vector;
 
 class FeatureTracker
 {
 public:
     /** Default constructor */
-    FeatureTracker(Point point);
+    FeatureTracker(cv::Point point);
 
     /** Default destructor */
     virtual ~FeatureTracker();
 
-    Point getLastPoint() const {
+    cv::Point getLastPoint() const {
         return points.back();
     }
 
@@ -30,12 +29,12 @@ public:
         points.pop_back();
     }
 
-    void move(Point newPoint);
+    void move(cv::Point newPoint);
 
-    void draw(Mat &canvas, Scalar& color);
+    void draw(cv::Mat &canvas, cv::Scalar& color);
     
-    vector<Point> getPoints();
-    Scalar& getColor();
+    vector<cv::Point> getPoints();
+    cv::Scalar& getColor();
     void setLastFrameIndex(int index);
     int getLastFrameIndex();
 
@@ -43,8 +42,8 @@ protected:
 
 private:
     // Past positions of moving point
-    vector<Point> points;
-    Scalar drawColor;
+    vector<cv::Point> points;
+    cv::Scalar drawColor;
     int lastFrameIndex;
 };
 

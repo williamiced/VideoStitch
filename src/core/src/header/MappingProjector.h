@@ -41,23 +41,23 @@ class MappingProjector {
 		int mOW, mOH;
 		bool mUseSerializableResult;
 		int mViewCount;
-		Size mViewSize;
-		Size mOutputWindowSize;
+		cv::Size mViewSize;
+		cv::Size mOutputWindowSize;
 		bool mUseGPU;
 		bool mTurnBlendOn;
 
 		vector< shared_ptr<PROJECT_METHOD> > mSphericalWarpers;
-		vector< Mat > mR;
-		vector< Mat > mK;
-		vector<Mat> mWarpedImgs;
-		vector<Mat> mProjMapX;
-		vector<Mat> mProjMapY;
-		vector<Mat> mProjMasks;
+		vector< cv::Mat > mR;
+		vector< cv::Mat > mK;
+		vector<cv::Mat> mWarpedImgs;
+		vector<cv::Mat> mProjMapX;
+		vector<cv::Mat> mProjMapY;
+		vector<cv::Mat> mProjMasks;
 		vector<MatchInfo> mMatchInfos;
-		vector< vector<Mat> > mHs;
-		vector<Mat> mFinalBlendingMap;
+		vector< vector<cv::Mat> > mHs;
+		vector<cv::Mat> mFinalBlendingMap;
 
-		void getBlendSalinecy(Mat& saliencyInfo, Mat& blendSaliencyInfo, int renderDiameter, Point center, int w, int h, int gridSize);
+		void getBlendSalinecy(cv::Mat& saliencyInfo, cv::Mat& blendSaliencyInfo, int renderDiameter, cv::Point center, int w, int h, int gridSize);
 		bool checkSeriailFileExist(string filename);
 		void setupWarpers();
 		void defineWindowSize();
@@ -65,11 +65,11 @@ class MappingProjector {
 		void interpolateUVcheckupTable();
 		void constructUVcheckupTable();
 		void refineCheckupTableByFeaturesMatching();
-		void drawMatches(Mat& img);
-		vector<Vec3b> getPixelsValueByUV(float u, float v, vector<Mat> frames, Mat& mask);
-		void tuneToMap(Point2f& p);
-		void getUVbyAzimuthal(const float xOffset, const float yOffset, const Point2f center, Point2f& newPnt);
-		float distOf(Point p1, Point p2);
+		void drawMatches(cv::Mat& img);
+		vector<cv::Vec3b> getPixelsValueByUV(float u, float v, vector<cv::Mat> frames, cv::Mat& mask);
+		void tuneToMap(cv::Point2f& p);
+		void getUVbyAzimuthal(const float xOffset, const float yOffset, const cv::Point2f center, cv::Point2f& newPnt);
+		float distOf(cv::Point p1, cv::Point p2);
 		float smoothstep(float edge0, float edge1, float x);
 		int rad2Deg(float r);
 		float deg2Rad(int d);
@@ -77,26 +77,26 @@ class MappingProjector {
 		void saveSerialFile();
 
 	public:
-		MappingProjector(int viewCount, Size viewSize);
-		void genExpoBlendingMap(vector<Mat> frames);
-		void renderPartialPano(Mat& outImg, vector<Mat> frames, Rect renderArea, Mat renderMask);
-		void renderSaliencyArea(Mat& smallImg, Mat& outImg, vector<Mat> frames, Mat saliencyFrame, int renderDiameter, Point2f renderCenter);
-		void renderSmallSizePano(Mat& outImg, vector<Mat> frames);
-		bool isInDiameter(Point c, Point p, int w, int h, int gridSize, int dSize);
+		MappingProjector(int viewCount, cv::Size viewSize);
+		void genExpoBlendingMap(vector<cv::Mat> frames);
+		void renderPartialPano(cv::Mat& outImg, vector<cv::Mat> frames, cv::Rect renderArea, cv::Mat renderMask);
+		void renderSaliencyArea(cv::Mat& smallImg, cv::Mat& outImg, vector<cv::Mat> frames, cv::Mat saliencyFrame, int renderDiameter, cv::Point2f renderCenter);
+		void renderSmallSizePano(cv::Mat& outImg, vector<cv::Mat> frames);
+		bool isInDiameter(cv::Point c, cv::Point p, int w, int h, int gridSize, int dSize);
 		void calcProjectionMatrix();
-		Size getOutputVideoSize();
+		cv::Size getOutputVideoSize();
 		void setCameraParams(vector<struct MutualProjectParam> params, double focalLength);
-		void setCameraParams(vector<Mat> Rs, vector<Mat> Ks);
+		void setCameraParams(vector<cv::Mat> Rs, vector<cv::Mat> Ks);
 		void saveMatchInfos(vector<MatchInfo> matchInfos);
 };
 
-BOOST_SERIALIZATION_SPLIT_FREE(Mat)
+BOOST_SERIALIZATION_SPLIT_FREE(cv::Mat)
 namespace boost {
 namespace serialization {
 
     /*** Mat ***/
     template<class Archive>
-    void save(Archive & ar, const Mat& m, const unsigned int version)
+    void save(Archive & ar, const cv::Mat& m, const unsigned int version)
     {
       size_t elemSize = m.elemSize(), elemType = m.type();
 
@@ -114,7 +114,7 @@ namespace serialization {
     }
 
     template<class Archive>
-    void load(Archive & ar, Mat& m, const unsigned int version)
+    void load(Archive & ar, cv::Mat& m, const unsigned int version)
     {
         int cols, rows;
         size_t elemSize, elemType;

@@ -1,5 +1,7 @@
 #include <header/LensProcessor.h>
 
+using namespace cv;
+
 void LensProcessor::undistort(Mat& frame) {
 	GpuMat oriFrame(frame);
 	GpuMat tmpFrame;

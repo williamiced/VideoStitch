@@ -1,5 +1,7 @@
 #include <header/VideoStitch.h>
 
+using namespace cv;
+
 VideoStitcher::~VideoStitcher() {
 	if (mIsRealTimeStreaming) {
 		logMsg(LOG_INFO, "Wait Server to finish");
@@ -19,6 +21,9 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 	mOW = getIntConfig("OUTPUT_PANO_WIDTH");
 	mIsRealTimeStreaming = (getIntConfig("REAL_TIME_STREAMING") == 1);
 	mUseSaliencyMapHandler = getStringConfig("USE_SALIENCY_MAP_HANDLER");
+
+
+
 	/** 
 		[Do preprocess]
 			1. Load videos
@@ -37,7 +42,10 @@ VideoStitcher::VideoStitcher(int argc, char* argv[]) {
 		mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler( getCmdOption(argv, argv + argc, "--saliency"), stoi( getCmdOption(argv, argv + argc, "--duration")) ) );
 	} else if (mUseSaliencyMapHandler.compare("KLT") == 0) {
 		logMsg(LOG_INFO, "=== Initialize saliency map handler from KLT ===");
-		mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler( ) );
+		mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler(true) );
+	} else if (mUseSaliencyMapHandler.compare("PQFT") == 0) {
+		logMsg(LOG_INFO, "=== Initialize saliency map handler from PQFT ===");
+		mSMH = shared_ptr<SaliencyMapHandler>( new SaliencyMapHandler(false) );
 	} else {
 		logMsg(LOG_INFO, "=== Run without salienct handler ===");
 	}
@@ -118,7 +126,7 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 	*/
 	logMsg(LOG_INFO, "=== Do real-time process ===");
 
-	VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), mVL->getVideoType(), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
+	//VideoWriter* outputVideo = new VideoWriter( getCmdOption(argv, argv + argc, "--output"), mVL->getVideoType(), mVL->getVideoFPS(), mMP->getOutputVideoSize() );
 
 	int seqCount = mVL->getVideoCount();
 	int duration = stoi( getCmdOption(argv, argv + argc, "--duration") );
@@ -133,8 +141,10 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		saliencyMode = 1;
 	else if (mUseSaliencyMapHandler.compare("KLT") == 0)
 		saliencyMode = 2;
-	else if (mUseSaliencyMapHandler.compare("ALL") == 0)
+	else if (mUseSaliencyMapHandler.compare("PQFT") == 0)
 		saliencyMode = 3;
+	else if (mUseSaliencyMapHandler.compare("ALL") == 0)
+		saliencyMode = 4;
 
 	for (int f=0; f<duration; f++) {
 		if (mVL->isCleanup())
@@ -180,7 +190,10 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 			} else if (saliencyMode == 2) { // Saliency Map from KLT
 				if ( !mSMH->calculateSaliencyFromKLT(smallCanvas, saliencyFrame) ) 
 					exitWithMsg(E_RUNTIME_ERROR, "Error when get saliency frame");
-			} else if (saliencyMode == 3) { // Baseline
+			} else if (saliencyMode == 3) { // PQFT
+				if ( !mSMH->calculateSaliencyFromPQFT(smallCanvas, saliencyFrame) ) 
+					exitWithMsg(E_RUNTIME_ERROR, "Error when get saliency frame");
+			} else if (saliencyMode == 4) { // Baseline
 				int h = getIntConfig("FEATURE_CANVAS_HEIGHT") / getIntConfig("SALIENCY_GRID_SIZE");
 				int w = getIntConfig("FEATURE_CANVAS_WIDTH") / getIntConfig("SALIENCY_GRID_SIZE");
 
@@ -203,9 +216,9 @@ void VideoStitcher::doRealTimeStitching(int argc, char* argv[]) {
 		if (mIsRealTimeStreaming) 
 			mRSM->streamOutFrame(targetCanvas);
 
-		(*outputVideo) << targetCanvas;
+		//(*outputVideo) << targetCanvas;
 		static int frameCounter = 0;
-		//imwrite(stringFormat("raw/pic_%d.png", frameCounter), targetCanvas);
+		imwrite(stringFormat("raw/%s_%d.png", getCmdOption(argv, argv + argc, "--output"), frameCounter), targetCanvas);
 		frameCounter++;
 
 		if (f != 0)

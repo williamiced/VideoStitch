@@ -12,23 +12,22 @@
 #include "opencv2/stitching/detail/motion_estimators.hpp"
 #include "opencv2/core/cuda.hpp"
 
-using namespace cv;
 using namespace cv::detail;
 using namespace cv::cuda;
 
 class AlignProcessor {
 	private:
 		int mViewCount;
-		vector<Mat> mFeededFrames;
+		vector<cv::Mat> mFeededFrames;
 		vector<ImageFeatures> mFeatures;
 		vector<MatchesInfo> mMatches;
 		vector<CameraParams> mCameras;
-		Ptr<FeaturesFinder> mFF; 
+		cv::Ptr<FeaturesFinder> mFF; 
 		
 	public:
-		vector<Mat> getRotationMat();
-		vector<Mat> getIntrinsicMat();
-		void feed( int v, Mat frame );
+		vector<cv::Mat> getRotationMat();
+		vector<cv::Mat> getIntrinsicMat();
+		void feed( int v, cv::Mat frame );
 		void doAlign();
 		AlignProcessor(int viewCount);
 		~AlignProcessor();

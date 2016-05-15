@@ -2,6 +2,7 @@
 
 using std::endl;
 using std::cerr;
+using namespace cv;
 
 //-----------------------------------------------------------------------
 //  class ImageDifference implementation

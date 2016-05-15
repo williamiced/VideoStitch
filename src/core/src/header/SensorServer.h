@@ -25,7 +25,6 @@
 #define BUF_SIZE 1024
 
 using namespace std;
-using namespace cv;
 using namespace boost::algorithm;
 
 class SensorServer {
@@ -50,8 +49,8 @@ class SensorServer {
 	public:
 		SensorServer();
 		SensorServer(string fileName);
-		void getFovealInfo(int& renderDiameter, Point2f& renderCenter);
-		void getRenderArea(Rect& area, Mat& mask);
+		void getFovealInfo(int& renderDiameter, cv::Point2f& renderCenter);
+		void getRenderArea(cv::Rect& area, cv::Mat& mask);
 		bool isSensorWorks();
 		string getClientIP();
 };

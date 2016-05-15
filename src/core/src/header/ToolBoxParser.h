@@ -16,7 +16,6 @@
 #include "opencv2/opencv.hpp"
 
 using namespace std;
-using namespace cv;
 
 class ToolBoxParser {
 	private:
@@ -24,15 +23,15 @@ class ToolBoxParser {
 	public:
 		// Intrinsic parameters
 		static vector< float > mX; // xi
-		static vector< Point2f > mF; // Focal length
+		static vector< cv::Point2f > mF; // Focal length
 		static vector< float > mAr; // Aspect ratio
-		static vector< Point > mC; // Principle point
-		static vector< Mat > mD; // Distortion coefficients
-		static vector< Mat > mK; // Intrinsic matrix
+		static vector< cv::Point > mC; // Principle point
+		static vector< cv::Mat > mD; // Distortion coefficients
+		static vector< cv::Mat > mK; // Intrinsic matrix
 
 		// Extrinsic parameters
-		static vector< Mat > mR; // Rotation matrix
-		static vector< Mat > mT; // Translation matrix
+		static vector< cv::Mat > mR; // Rotation matrix
+		static vector< cv::Mat > mT; // Translation matrix
 
 		static vector<float> parseIntrinsicInfo(string lineStr);
 		static vector<float> parseExtrinsicInfo(string valueStr);

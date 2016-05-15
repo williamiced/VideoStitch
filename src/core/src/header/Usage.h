@@ -29,7 +29,6 @@
 #define unsafe(i)  \
         ( (i) >= 0 ? (i) : -(i) )
 
-using namespace cv;
 using namespace std;
 using boost::assign::map_list_of;
 
@@ -45,8 +44,8 @@ enum logTypeEnum {
 };
 
 typedef struct RenderArea {
-	Rect roi; // ROI
-	Mat mask; // mask
+	cv::Rect roi; // ROI
+	cv::Mat mask; // mask
 } RenderArea;
 
 struct MutualProjectParam {
@@ -80,10 +79,10 @@ void exitWithMsg(returnValEnum errVal, string msg = NULL);
 void logMsg(logTypeEnum type, string msg);
 void logMsg(logTypeEnum type, string msg, int threadIdx);
 string stringFormat(const string fmt_str, ...); 
-Mat getRotationMatrix(double yaw, double pitch, double roll);
-Mat getZMatrix(double alpha);
-Mat getYMatrix(double beta);
-Mat getXMatrix(double gamma);
+cv::Mat getRotationMatrix(double yaw, double pitch, double roll);
+cv::Mat getZMatrix(double alpha);
+cv::Mat getYMatrix(double beta);
+cv::Mat getXMatrix(double gamma);
 void segFaultHandler (int sig);
 
 class RMat{
@@ -91,7 +90,7 @@ public:
 	double get_yaw(){ return eulerangle[YAW]; }
 	double get_roll(){ return eulerangle[ROLL]; }
 	double get_pitch(){ return eulerangle[PITCH]; }
-	Mat getR() { return getRotationMatrix(eulerangle[YAW], eulerangle[PITCH], eulerangle[ROLL] ); }
+	cv::Mat getR() { return getRotationMatrix(eulerangle[YAW], eulerangle[PITCH], eulerangle[ROLL] ); }
 
 	void set(double yaw, double pitch, double roll) { eulerangle[YAW] = yaw; eulerangle[PITCH] = pitch; eulerangle[ROLL] = roll;}
 	void set_yaw(double temp_yaw){ eulerangle[YAW] = temp_yaw; }
@@ -122,7 +121,7 @@ public:
 	ExtrinsicParam();
 	ExtrinsicParam(double y, double p, double r, double tx, double ty, double tz);
 
-	Mat getR() { return R.getR(); }
+	cv::Mat getR() { return R.getR(); }
 	double get_RMat_Value(int angle);
 	void set_RMat_Value(int angle , double value);
 	double get_TMat_Value(int direction);
@@ -145,8 +144,8 @@ public:
 
 class FeatureMatch {
 public:
-	Point p1;
-	Point p2;
+	cv::Point p1;
+	cv::Point p2;
 };
 
 class MatchInfo {

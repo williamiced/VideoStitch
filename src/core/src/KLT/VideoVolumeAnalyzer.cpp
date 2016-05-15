@@ -5,6 +5,7 @@
 
 using std::cerr;
 using std::endl;
+using namespace cv;
 
 VideoVolumeAnalyzer::VideoVolumeAnalyzer() {
     fgDetector = new ImageDifference();

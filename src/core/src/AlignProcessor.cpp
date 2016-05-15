@@ -1,5 +1,7 @@
 #include <header/AlignProcessor.h>
 
+using namespace cv;
+
 void AlignProcessor::feed( int v, Mat frame ) {
 	mFeededFrames[v] = frame;
 }

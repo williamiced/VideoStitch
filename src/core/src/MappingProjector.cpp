@@ -1,5 +1,7 @@
 #include <header/MappingProjector.h>
 
+using namespace cv;
+
 void MappingProjector::setCameraParams(vector<struct MutualProjectParam> params, double focalLength) {
 	// Calculate R by eular angles
 	for (int v=0; v<mViewCount; v++) {
@@ -329,7 +331,7 @@ void MappingProjector::genExpoBlendingMap(vector<Mat> frames) {
 	mBP->getFinalMap(mFinalBlendingMap);
 
 	if (mUseGPU) {
-		if (getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("KLT") == 0 || getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("FILE") == 0 || getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("ALL") == 0) {
+		if (getStringConfig("USE_SALIENCY_MAP_HANDLER").compare("") != 0) {
 			logMsg(LOG_INFO, "=== Start register reference map to GPU ===");
 			vector<unsigned char*> mapXArr;
 			vector<unsigned char*> mapYArr;
@@ -387,20 +389,16 @@ bool MappingProjector::isInDiameter(Point c, Point p, int w, int h, int gridSize
 void MappingProjector::getBlendSalinecy(Mat& saliencyInfo, Mat& blendSaliencyInfo, int renderDiameter, Point center, int w, int h, int gridSize) {
 	// TEST
 	//saliencyInfo = Mat::zeros(h, w, CV_8UC1);
+	SETUP_TIMER
 
 	for (int y=0; y<h; y++)
 		for (int x=0; x<w; x++)
 			if (isInDiameter(center, Point(x, y), w, h, gridSize, renderDiameter))
 				saliencyInfo.at<uchar>(y, x) = 255;
+	
 	saliencyInfo.convertTo(blendSaliencyInfo, CV_32FC1);
 	GaussianBlur(blendSaliencyInfo, blendSaliencyInfo, Size(3, 3), 0, 0);
 	blendSaliencyInfo.convertTo(blendSaliencyInfo, CV_8UC1);
-
-	/*
-	static int cc = 0;
-	imwrite(stringFormat("window/test_%d.png", cc), blendSaliencyInfo);
-	cc++;
-	*/
 }
 
 void MappingProjector::renderSaliencyArea(Mat& smallImg, Mat& outImg, vector<Mat> frames, Mat saliencyInfo, int renderDiameter, Point2f renderCenter) {
@@ -419,13 +417,16 @@ void MappingProjector::renderSaliencyArea(Mat& smallImg, Mat& outImg, vector<Mat
 
 	Mat blendSaliencyInfo;
 	getBlendSalinecy(saliencyInfo, blendSaliencyInfo, renderDiameter, center, w, h, gridSize);
-	
+
 	if (mUseGPU) {
 		renderSaliencyAreaCuda(mViewCount, frames[0].cols, frames[0].rows, frames[0].channels(), w, h, gridSize, renderDiameter, center.x, center.y, mOW, mOH, smallImg.channels(), 
 			blendSaliencyInfo.data, outImg.data, mDW, mDH);
 	} else {
 		cv::resize(blendSaliencyInfo, blendSaliencyInfo, Size(mOW, mOH));
 		cv::resize(smallImg, outImg, Size(mOW, mOH));
+
+		// test
+		outImg = Mat::zeros(mOH, mOW, CV_8UC3);
 
 		//#pragma omp parallel for collapse(2) 
 		for (int y=0 ;y<h; y++) {

@@ -15,14 +15,14 @@ using namespace cv::cuda;
 
 class LensProcessor {
 	private:
-		Mat mA;
-		Mat mD;
+		cv::Mat mA;
+		cv::Mat mD;
 		GpuMat mUndistortMapX;
 		GpuMat mUndistortMapY;
 
 	public:
-		void undistort(Mat& frame);
-		LensProcessor(vector<Mat> Ks, vector<Mat> Ds, cv::Size videoSize, double focalLength);
+		void undistort(cv::Mat& frame);
+		LensProcessor(vector<cv::Mat> Ks, vector<cv::Mat> Ds, cv::Size videoSize, double focalLength);
 		~LensProcessor();
 };
 

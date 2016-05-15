@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <ctime> 
 #include <queue>
+#include <string>
 #include <header/VideoLoader.h>
 #include <header/LensProcessor.h>
 #include <header/VideoStablizer.h>
@@ -36,11 +37,11 @@ class VideoStitcher {
 		int mOH;
 		int mOW;
 
-		Size mOutputVideoSize;
+		cv::Size mOutputVideoSize;
 
 		// Config
 		bool mIsRealTimeStreaming;
-		String mUseSaliencyMapHandler;
+		string mUseSaliencyMapHandler;
 
 	public:
 		void doRealTimeStitching(int argc, char* argv[]);

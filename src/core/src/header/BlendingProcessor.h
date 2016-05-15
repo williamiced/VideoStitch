@@ -15,31 +15,31 @@ using namespace cv::cuda;
 class BlendingProcessor : public cv::detail::Blender {
 	private:
 		int mViewCount;
-		Rect mCanvasROI;
-		vector<Mat> mDilateMasks;
-		vector<Mat> mWeightMaps;
+		cv::Rect mCanvasROI;
+		vector<cv::Mat> mDilateMasks;
+		vector<cv::Mat> mWeightMaps;
 
 		// New approach to speed up
-		vector<Mat> mAdjustWeightMaps;
-		vector<Mat> mFinalAdjustWeightMaps;
+		vector<cv::Mat> mAdjustWeightMaps;
+		vector<cv::Mat> mFinalAdjustWeightMaps;
 
 	private:
 		float sharpness_;
-    	UMat dst_weight_map_;
+    	cv::UMat dst_weight_map_;
 
 	public:
-		void prepare(Rect dst_roi);
-		void feed (InputArray _img, InputArray mask, Point tl);
-		void feeds(vector<Mat> imgs);
-		void blend(InputOutputArray dst, InputOutputArray dst_mask);
+		void prepare(cv::Rect dst_roi);
+		void feed (cv::InputArray _img, cv::InputArray mask, cv::Point tl);
+		void feeds(vector<cv::Mat> imgs);
+		void blend(cv::InputOutputArray dst, cv::InputOutputArray dst_mask);
 		void setSharpness(float val) { sharpness_ = val; }
-		void genWeightMapByMasks(vector<Mat> masks);
-		void preProcess(Rect dst_roi, vector<Mat> imgs);
+		void genWeightMapByMasks(vector<cv::Mat> masks);
+		void preProcess(cv::Rect dst_roi, vector<cv::Mat> imgs);
 		void newPreprocess();
 		void genFinalMap(vector<double> gains);
-		void getFinalMap(vector<Mat>& finalMap);
+		void getFinalMap(vector<cv::Mat>& finalMap);
 
-		BlendingProcessor( int vc, Rect canvasROI );
+		BlendingProcessor( int vc, cv::Rect canvasROI );
 		~BlendingProcessor();
 };
 

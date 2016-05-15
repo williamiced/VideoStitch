@@ -1,5 +1,7 @@
 #include <header/VideoLoader.h>
 
+using namespace cv;
+
 void VideoLoader::loadVideos(char* fileName) {
 	ifstream inputFile(fileName);
 

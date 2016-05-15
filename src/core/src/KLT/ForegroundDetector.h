@@ -5,7 +5,6 @@
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/bgsegm.hpp"
 
-using namespace cv;
 using namespace cv::bgsegm;
 
 //---------------------------------------------------------------------------
@@ -15,23 +14,23 @@ using namespace cv::bgsegm;
 class ImageDifference : public ForegroundDetector
 {
 private:
-    Mat frame, gray;
-    Mat fgMask, bgImage;
+    cv::Mat frame, gray;
+    cv::Mat fgMask, bgImage;
 
 public:
     ImageDifference(void);
     ~ImageDifference(void);
 
-    void process(Mat &img);
+    void process(cv::Mat &img);
 
     void draw();
 
-    Mat& getResult()
+    cv::Mat& getResult()
     {
         return fgMask;
     }
 
-    Mat& getBackgroundImage()
+    cv::Mat& getBackgroundImage()
     {
         return bgImage;
     };
@@ -44,23 +43,23 @@ public:
 class ForegroundDetectorMOG : public ForegroundDetector
 {
 private:
-    Mat frame, fgMask, bgImage;
-    Ptr<BackgroundSubtractorMOG> bgSubtractor;
+    cv::Mat frame, fgMask, bgImage;
+    cv::Ptr<cv::bgsegm::BackgroundSubtractorMOG> bgSubtractor;
 
 public:
     ForegroundDetectorMOG(void);
     ~ForegroundDetectorMOG(void);
 
-    void process(Mat &img);
+    void process(cv::Mat &img);
 
     void draw();
 
-    Mat& getResult()
+    cv::Mat& getResult()
     {
         return fgMask;
     }
 
-    Mat& getBackgroundImage();
+    cv::Mat& getBackgroundImage();
 };
 
 //---------------------------------------------------------------------------
@@ -70,23 +69,23 @@ public:
 class ForegroundDetectorMOG2 : public ForegroundDetector
 {
 private:
-    Mat frame, fgMask, bgImage;
-    Ptr<BackgroundSubtractorMOG2> bgSubtractor;
+    cv::Mat frame, fgMask, bgImage;
+    cv::Ptr<cv::BackgroundSubtractorMOG2> bgSubtractor;
 
 public:
     ForegroundDetectorMOG2(void);
     ~ForegroundDetectorMOG2(void);
 
-    void process(Mat &img);
+    void process(cv::Mat &img);
 
     void draw();
 
-    Mat& getResult()
+    cv::Mat& getResult()
     {
         return fgMask;
     }
 
-    Mat& getBackgroundImage();
+    cv::Mat& getBackgroundImage();
 };
 
 #endif // FOREGROUNDDETECTOR_H

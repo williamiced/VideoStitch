@@ -3,8 +3,6 @@
 
 #include <opencv2/opencv.hpp>
 
-using namespace cv;
-
 //--------------------------------------------------------------------------
 //  Base class : ImageProcessor
 //      Abstract class for generic image processors using
@@ -14,12 +12,12 @@ class ImageProcessor
 {
 public:
     // process image
-    virtual void process(Mat &img) = 0;
+    virtual void process(cv::Mat &img) = 0;
 
     // draw processed image
     virtual void draw() = 0;
 
-    virtual Mat& getResult() = 0;
+    virtual cv::Mat& getResult() = 0;
 
     virtual ~ImageProcessor(void) {};
 };
@@ -36,7 +34,7 @@ protected:
 
 public:
     // Retrieve the background image maintained by the underlying algorithm.
-    virtual Mat& getBackgroundImage() = 0;
+    virtual cv::Mat& getBackgroundImage() = 0;
 
     // Turn on or off background model updating
     void toggleUpdate(bool flag)

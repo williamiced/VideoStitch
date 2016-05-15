@@ -1,5 +1,7 @@
 #include <header/Usage.h>
 
+using namespace cv;
+
 map<string, string> CONFIG;
 
 int getIntConfig(string name) {

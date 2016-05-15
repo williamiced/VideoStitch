@@ -1,5 +1,7 @@
 #include <header/ExposureProcessor.h>
 
+using namespace cv;
+
 void ExposureProcessor::doExposureCompensate( vector<Mat> warpedImg, vector<Mat> warpedMasks, Rect renderArea) {
     SETUP_TIMER
 

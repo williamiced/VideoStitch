@@ -1,5 +1,7 @@
 #include <header/RealtimeStreamMaker.h>
 
+using namespace cv;
+
 queue<Mat> RealtimeStreamMaker::frameQueue;
 Mat RealtimeStreamMaker::latestFrame;
 MyApp* RealtimeStreamMaker::mApp;
@@ -100,21 +102,18 @@ void RealtimeStreamMaker::waitForServerFinish() {
     g_main_loop_unref (mApp->loop);
 }
 
+/*
 void RealtimeStreamMaker::media_configure(GstRTSPMediaFactory *factory, GstRTSPMedia *media, gpointer user_data) {
     logMsg(LOG_INFO, "Media configured", 1);
 
     GstElement *element, *appsrc;
 
-    /* get the element used for providing the streams of the media */
     element = gst_rtsp_media_get_element(media);
 
-    /* get our appsrc, we named it 'mysrc' with the name property */
     appsrc = gst_bin_get_by_name_recurse_up(GST_BIN(element), "mysrc");
 
-    /* this instructs appsrc that we will be dealing with timed buffer */
     gst_util_set_object_arg(G_OBJECT(appsrc), "format", "time");
 
-    /* configure the caps of the video */
     g_object_set(G_OBJECT(appsrc), "caps",
              gst_caps_new_simple("video/x-raw",
                                  "format", G_TYPE_STRING, "RGB",
@@ -123,14 +122,13 @@ void RealtimeStreamMaker::media_configure(GstRTSPMediaFactory *factory, GstRTSPM
                                  "framerate", GST_TYPE_FRACTION, 30, 1, 
                                  NULL), NULL);
 
-    /* make sure the data is freed when the media is gone */
     //g_object_set_data_full(G_OBJECT(media), "my-extra-data", ctx, (GDestroyNotify)g_free);
 
-    /* install the callback that will be called when a buffer is needed */
     g_signal_connect (appsrc, "need-data", G_CALLBACK (rtspNeedData), mApp);
     gst_object_unref(appsrc);
     gst_object_unref(element);
 }
+*/
 
 RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP) {
 	gst_init(&argc, &argv);
@@ -143,15 +141,15 @@ RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP
     mApp->timer = g_timer_new();
 
     if (getStringConfig("USING_PROTOCAL").compare("RTSP") == 0 ) {
+        /*
         mApp->server = gst_rtsp_server_new();
         mApp->mounts  = gst_rtsp_server_get_mount_points(mApp->server);
         mApp->factory = gst_rtsp_media_factory_new();
 
         // Set pipeline for app
-        /*
-        gst_rtsp_media_factory_set_launch(mApp->factory,
-                                      "( appsrc name=mysrc ! videoconvert ! capsfilter ! x264enc tune=zerolatency ! rtph264pay name=pay0 pt=96 )");
-                                      */
+        
+        //gst_rtsp_media_factory_set_launch(mApp->factory,
+        //                              "( appsrc name=mysrc ! videoconvert ! capsfilter ! x264enc tune=zerolatency ! rtph264pay name=pay0 pt=96 )");
         gst_rtsp_media_factory_set_launch(mApp->factory,
                                       "( appsrc name=mysrc ! videoconvert ! capsfilter ! avenc_mpeg4 ! rtpmp4vpay name=pay0 pt=96 )");
         gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(mApp->factory), TRUE);
@@ -159,11 +157,10 @@ RealtimeStreamMaker::RealtimeStreamMaker(int argc, char* argv[], string clientIP
         g_signal_connect(mApp->factory, "media-configure", G_CALLBACK (media_configure), NULL);
         gst_rtsp_mount_points_add_factory(mApp->mounts, "/test", mApp->factory);
 
-        /* don't need the ref to the mounts anymore */
         g_object_unref(mApp->mounts);
 
-        /* attach the server to the default maincontext */
         gst_rtsp_server_attach(mApp->server, NULL);
+        */
     } else {
         if (getStringConfig("USING_PROTOCAL").compare("UDP") == 0 ) {
             mApp->pipeline = gst_parse_launch(

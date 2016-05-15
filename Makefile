@@ -5,16 +5,17 @@ NCC=nvcc -std=c++11
 # Using for clearer error finding
 BONUS=2>&1 | grep -E --color=always 'error|warning|$$'
 
-BASE_C_FLAG=`pkg-config --cflags opencv gstreamer-1.0 gstreamer-rtsp-server-1.0`
-BASE_LD_FLAG=`pkg-config --libs opencv  gstreamer-1.0 gstreamer-rtsp-server-1.0` -L/usr/local/cuda-7.5/lib64
+BASE_C_FLAG=`pkg-config --cflags opencv gstreamer-1.0 `
+BASE_LD_FLAG=`pkg-config --libs opencv  gstreamer-1.0 ` -L/usr/local/cuda-7.5/lib64
 
 CFLAGS=$(BASE_C_FLAG)
 CFLAGS+=-Wall -O3 -fopenmp
 LDFLAGS=$(BASE_LD_FLAG)
-LDFLAGS+=-lboost_system -lboost_timer -lgomp -lglut -lGL -lGLEW -lGLU -lboost_serialization -lcuda -lcudart
+LDFLAGS+=-lboost_system -lboost_timer -lgomp -lglut -lGL -lGLEW -lGLU -lboost_serialization -lcuda -lcudart -L$(LIB) -lfftw3 -lfftw3_omp -lm
 
 # Paths
 SRC=src/core/src
+LIB=lib
 OBJ=obj
 DATA=data/Cut15
 EXP=data/modexp
@@ -26,8 +27,7 @@ RECORD_FILES = $(wildcard $(EXP)/*/*.txt)
 DEPD = $(wildcard $(SRC)/header/.h)
 BIN=bin
 TMP=tmp
-#DATA=/media/wlee/新增磁碟區/ubuntu/Cut15
-INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -I$(SRC) -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ 
+INC=-I/usr/local/cuda-7.5/extras/CUPTI/include -I$(SRC) -I/usr/local/cuda-7.5/targets/x86_64-linux/include/ -I$(SRC)/fftw++-2.02
 
 # All files
 OBJ_FILES := $(addprefix obj/,$(notdir $(SRC_FILES:.cpp=.o)))
@@ -39,6 +39,12 @@ cccyan=$(shell echo "\033[0;36m")
 ccend=$(shell echo "\033[0m")
 
 all: VideoStitch
+
+test:
+	$(CC) $(CFLAGS) $? -I. -I$(SRC)/fftw++-2.02 tools/SaliencyMapExtractor/QFFT.cpp $(SRC)/fftw++-2.02/fftw++.cc -o $(BIN)/$@ $(LDFLAGS)
+
+testrun:
+	bin/test
 
 tools: VideoStitch CameraCalibrator ImagesDumper
 
@@ -54,7 +60,7 @@ $(OBJ)/%.o: $(SRC)/%.cpp $(SRC)/header/%.h
 	@mkdir -p $(OBJ)
 	@echo "$(cccyan)[Run OBJ $@ compile]$(ccend)"	
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $< 
-
+	
 $(OBJ)/KLT/%.o: $(SRC)/KLT/%.cpp $(SRC)/KLT/%.h
 	@mkdir -p $(OBJ)
 	@mkdir -p $(OBJ)/KLT
@@ -69,7 +75,7 @@ $(OBJ)/Cuda/%.o: $(SRC)/Cuda/%.cu $(SRC)/Cuda/%.h
 
 VideoStitch: $(OBJ_FILES) $(OBJ_KLT_FILES) $(OBJ_CUDA_FILES)
 	@echo "$(cccyan)[Run Link compile]$(ccend)"
-	$(CC) $? $(CFLAGS) -I$(SRC) src/cmd/main.cpp -o $(BIN)/$@ $(LDFLAGS) $(LDFLAGS)
+	$(CC) $? $(CFLAGS) -I$(SRC) -I$(SRC)/fftw++-2.02 src/cmd/main.cpp  $(SRC)/fftw++-2.02/fftw++.cc -o $(BIN)/$@ $(LDFLAGS) 
 
 calcFPS:
 	@for CONFIG in $(CONFIG_FILES); do \
@@ -79,8 +85,6 @@ calcFPS:
 			sh scripts/calcFPS.sh $$TMP $$TMP2; \
 		done \
 	done
-	
-
 
 SaliencyMapExtractor:
 	$(CC) $(CFLAGS) $? -I. tools/SaliencyMapExtractor/SaliencyMapExtractor.cpp -o $(BIN)/$@ $(LDFLAGS)
@@ -112,12 +116,9 @@ ImagesDumper:
 	@echo "$(cccyan)[Ganerate images dumper]$(ccend)"
 	$(CC) -I$(SRC) obj/Usage.o -o $(BIN)/$@ tools/imagesDumper/ImagesDumper.cpp $(LDFLAGS)
 
-blendTest:
-	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ori.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
-	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ori_960.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
-	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ours_1.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
-	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ours_2.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
-	bin/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi --featureInfo data/Cut15/FeatureInfo.txt --saliency data/Cut15/saliency.mp4 --config data/Cut15/ours_3.config --sensorData $(DATA)/../modexp/若曦/Record1.txt 
+final:
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 1500 --output Final_15_ --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/../my.config --sensorData $(DATA)/../modexp/若曦/Record1.txt
+	$(BIN)/VideoStitch --input data/Cut17/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 1000 --output Final_17_ --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/../my.config --sensorData $(DATA)/../modexp/若曦/Record1.txt
 
 birthday:
 	for RECORD in $(RECORD_FILES); do \
@@ -139,7 +140,7 @@ run:
 	#$(BIN)/VideoStitch --input data/gopro/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/MultiCalibration/inputVideo.txt --calibration data/MultiCalibration/calibrationResult.txt --pto data/Cut15/15.pto --duration 100 --output StitchResult.avi
 	#$(BIN)/VideoStitch --input data/2016-05-04/test01/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/my.config
-	$(BIN)/VideoStitch --input $(DATA)/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/../my.config --sensorData $(DATA)/../modexp/若曦/Record1.txt
+	$(BIN)/VideoStitch --input data/Cut15/inputVideo.txt --calibration $(DATA)/Calibration.txt --pto $(DATA)/15.pto --duration 100 --output StitchResult.avi --featureInfo $(DATA)/FeatureInfo.txt --saliency $(DATA)/saliency.mp4 --config $(DATA)/../my.config --sensorData $(DATA)/../modexp/順堯/Record1.txt
 
 runPR:
 	$(BIN)/PR --input data/Cut15/inputVideo.txt --calibration data/Cut15/Calibration.txt --pto data/Cut15/15.pto --duration 300 --output StitchResult.avi

@@ -24,16 +24,15 @@
 #include "opencv2/opencv.hpp"
 
 using namespace std;
-using namespace cv;
 
 class VideoLoader {
 	private:
-		vector<VideoCapture*> mVideoList;
-		vector< queue<Mat> > mFrameBuffers;
+		vector<cv::VideoCapture*> mVideoList;
+		vector< queue<cv::Mat> > mFrameBuffers;
 		vector<struct MutualProjectParam> mMutualParams;
 		double mFocalLength;
-		Size mVideoSize;
-		map< string, Mat > mCalibrationMatrix;
+		cv::Size mVideoSize;
+		map< string, cv::Mat > mCalibrationMatrix;
 		int mCurrentFirstFrame;
 		int mDuration;
 		mutex mBufLock;
@@ -55,12 +54,12 @@ class VideoLoader {
 		int getVideoType();
 		double getFocalLength();
 		int getVideoListSize();
-		VideoCapture* getVideo(int idx);
-		bool getFrameInSeq(unsigned int fIdx, unsigned int vIdx, Mat& frame);
+		cv::VideoCapture* getVideo(int idx);
+		bool getFrameInSeq(unsigned int fIdx, unsigned int vIdx, cv::Mat& frame);
 		double getVideoFPS();
 		int getVideoCount();
-		Size getVideoSize();
-		vector<Mat> getCalibrationData(string id);
+		cv::Size getVideoSize();
+		vector<cv::Mat> getCalibrationData(string id);
 		vector<struct MutualProjectParam> getPTOData();
 		void loadCalibrationFile(char* calFileName);
 		void loadCalibrationFileFromToolBox(char* calFileName);

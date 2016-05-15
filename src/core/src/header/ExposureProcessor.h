@@ -17,22 +17,22 @@ using namespace cv::cuda;
 
 class ExposureProcessor : public cv::detail::ExposureCompensator {
 	private:
-		vector<Point> mCorners;
+		vector<cv::Point> mCorners;
 		int mViewCount;
 		bool mNeedFeed;
-		Mat_<double> gains_;
+		cv::Mat_<double> gains_;
 
 	public:
-		void feed(const std::vector<Point> &corners, const std::vector<UMat> &images,
-                               const std::vector<UMat> &masks);
-		void feed(const std::vector<Point> &corners, const std::vector<UMat> &images,
-              const std::vector<std::pair<UMat,uchar> > &masks);
-    	void apply(int index, Point corner, InputOutputArray image, InputArray mask);
+		void feed(const std::vector<cv::Point> &corners, const std::vector<cv::UMat> &images,
+                               const std::vector<cv::UMat> &masks);
+		void feed(const std::vector<cv::Point> &corners, const std::vector<cv::UMat> &images,
+              const std::vector<std::pair<cv::UMat,uchar> > &masks);
+    	void apply(int index, cv::Point corner, cv::InputOutputArray image, cv::InputArray mask);
     	std::vector<double> gains() const;
-		void feedExposures(vector<Mat> warpedImg, vector<Mat> warpedMasks);
-		void doExposureCompensate(vector<Mat> warpedImg, vector<Mat> warpedMasks, Rect renderArea);
+		void feedExposures(vector<cv::Mat> warpedImg, vector<cv::Mat> warpedMasks);
+		void doExposureCompensate(vector<cv::Mat> warpedImg, vector<cv::Mat> warpedMasks, cv::Rect renderArea);
 		bool needFeed();
-		ExposureProcessor( vector<Point> c, int vc);
+		ExposureProcessor( vector<cv::Point> c, int vc);
 		~ExposureProcessor();
 };
 
